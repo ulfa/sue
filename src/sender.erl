@@ -63,7 +63,7 @@ start() ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    {ok, #state{socket=0}, 0}.
+    {ok, #state{}, 0}.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -96,9 +96,13 @@ handle_cast(_Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_info({udp, Socket, IPtuple, InPortNo, Packet}, State) ->
+	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [IPtuple, InPortNo, Packet]),
+	 {noreply, State};
+	 
 handle_info(timeout, _State) ->
 	{ok, Socket} = gen_udp:open(?MULTICAST_PORT, ?OPTIONS),	
-	inet:setopts(Socket ,[{add_membership,{?MULTICAST_GROUP, {0,0,0,0}}}]),
+	inet:setopts(Socket ,[{add_membership,{?MULTICAST_GROUP, get_ip()}}]),
 	{ok, {Address, Port}} = inet:sockname(Socket),
 	io:format("1...Address : ~p  Port : ~p~n", [Address, Port]),	
 	start_timer(),
@@ -106,13 +110,11 @@ handle_info(timeout, _State) ->
 	
 handle_info(send_alive, State=#state{socket = Socket}) ->
 	error_logger:info_msg("i am alive~n"),
-	ok = gen_udp:send(Socket, ?MULTICAST_GROUP, ?MULTICAST_PORT, "Message"),
+	ok = gen_udp:send(Socket, get_ip(),  ?MULTICAST_PORT, get_search()),
 	start_timer(),
 	{noreply, State};
 	
-handle_info({udp, _Socket, IPtuple, InPortNo, Packet}, State) ->
-	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [IPtuple, InPortNo, Packet]),
-	 {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -138,9 +140,18 @@ code_change(_OldVsn, State, _Extra) ->
 start_timer() ->
 	erlang:send_after(3000, self(), send_alive).
 
-get_cookie() ->
-	[encode_cookie(erlang:get_cookie())].
+get_search() ->
+	<<"SEARCH:">>.
 	
+get_cookie() ->
+	[encode_cookie(atom_to_list(erlang:get_cookie()))].
+
+get_node() ->
+	erlang:atom_to_binary(node(), utf8).	
+
+get_alive() ->
+	<<"ALIVE">>.
+		
 encode_cookie(Cookie) ->
 	crypto:md5_mac(Cookie, Cookie).
 	
@@ -157,6 +168,42 @@ decode_cookie([H|T], Cookie, Acc) ->
 compare_cookie(H, Cookie) ->
 	H =:= encode_cookie(Cookie).
 	
+get_ip() ->
+	get_active_ip().
+
+get_active_ip() ->
+	get_active_ip(get_iflist()).
+
+get_active_ip(If_list) ->
+	get_ip([A || A <- If_list, inet:ifget(A,[addr]) /= {ok,[{addr,{127,0,0,1}}]}, filter_networkcard(list_to_binary(A))]).
+
+filter_networkcard(<<"vnic", _R/binary>>) ->
+	false;
+filter_networkcard(<<"vmnet", _R/binary>>) ->
+	false;
+filter_networkcard(_) ->
+	true.
+
+get_ip([]) ->
+	get_loopback();
+
+get_ip([If]) ->
+	case inet:ifget(If, [addr]) of
+		{ok, []} -> get_loopback();
+		{_, [{_, Ip}]} -> Ip
+	end.
+
+get_loopback() ->
+	get_loopback(get_iflist()).
+
+get_loopback(If_list) ->
+	get_ip([A || A <- If_list, inet:ifget(A,[addr]) == {ok,[{addr,{127,0,0,1}}]}]).
+
+get_iflist() ->
+	{ok, IfList} = inet:getiflist(),
+	IfList.
+
+
 %% --------------------------------------------------------------------
 %%% Test functions
 %% --------------------------------------------------------------------
@@ -165,5 +212,4 @@ compare_cookie(H, Cookie) ->
 get_cookie_test() ->
 	crypto:start(),
 	?assertEqual(["nocookie"], decode_cookies([encode_cookie("nocookie")], "nocookie", [])).
-
 -endif.
