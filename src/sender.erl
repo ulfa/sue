@@ -97,8 +97,8 @@ handle_cast(_Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info(timeout, _State) ->
-	{ok, Socket} = gen_udp:open(?MULTICAST_PORT, ?OPTIONS),	
-	inet:setopts(Socket ,[{add_membership,{?MULTICAST_GROUP, ip_device:get_ip()}}]),
+	{ok, Socket} = gen_udp:open(get_env(multi_port), ?OPTIONS),	
+	inet:setopts(Socket ,[{add_membership,{get_env(multi_ip), ip_device:get_ip()}}]),
 	{ok, {Address, Port}} = inet:sockname(Socket),
 	io:format("1...Address : ~p  Port : ~p~n", [Address, Port]),	
 	start_timer(),
@@ -141,16 +141,16 @@ start_timer() ->
 	erlang:send_after(3000, self(), send_alive).
 
 get_search() ->
-	<<"SEARCH:">>.
+	erlang:list_to_binary([<<"SEARCH:">>, get_cookie(), <<":">>, get_node(), <<":">>, get_state()]).
 	
 get_cookie() ->
-	[encode_cookie(atom_to_list(erlang:get_cookie()))].
+	encode_cookie(atom_to_list(erlang:get_cookie())).
 
 get_node() ->
 	erlang:atom_to_binary(node(), utf8).	
 
-get_alive() ->
-	<<"ALIVE">>.
+get_state() ->
+	<<"ACTIV">>.
 		
 encode_cookie(Cookie) ->
 	crypto:md5_mac(Cookie, Cookie).
@@ -165,15 +165,24 @@ decode_cookie([H|T], Cookie, Acc) ->
 		true -> [Cookie|Acc];
 		false -> Acc
 	end. 
+	
 compare_cookie(H, Cookie) ->
 	H =:= encode_cookie(Cookie).
-	
+
+get_env(Key) ->
+	{ok, Value} = application:get_env(searcher, multi_port),
+	Value.
 %% --------------------------------------------------------------------
 %%% Test functions
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+get_env_test() ->
+	application:load(searcher),
+	?assertEqual(1900,get_env(multi_port)).
+	
 get_cookie_test() ->
 	crypto:start(),
 	?assertEqual(["nocookie"], decode_cookies([encode_cookie("nocookie")], "nocookie", [])).
+	
 -endif.
