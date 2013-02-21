@@ -9,6 +9,7 @@
                  ]},
   {mod, { searcher_app, []}},
   {env, [{multi_ip, {239,255,255,250}},
-  		 {multi_port, 1900}
+  		 {multi_port, 1900},
+		 {timer, 5000}
   		]}
  ]}.

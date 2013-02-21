@@ -111,7 +111,8 @@ handle_info(send_alive, State=#state{socket = Socket, port = Port}) ->
 	
 handle_info({udp, Socket, IPtuple, InPortNo, Packet}, State) ->
 	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [IPtuple, InPortNo, Packet]),
-	 {noreply, State};
+	decode_message(Packet),
+	{noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -135,11 +136,30 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
+%% <<"SEARCH:COOKIE:NODE:STATE:TIME">>
+decode_message(<<Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->	
+	Is_valid_cookie = decode_cookie(Cookie, get_local_cookie()),
+	[Node, R1] = binary:split(Rest,<<":">>),
+	[State, Time] = binary:split(R1,<<":">>),
+	decode_message(Is_valid_cookie, Node, State, Time).
+	
+decode_message(true, Node, State, Time) ->	
+	error_logger:info_msg("Found : ~p in state : ~p ~n", [Node, State]),
+	[{node, Node}, {state, State}, {time, Time}];
+decode_message(false, Node, State, Time) ->	
+	error_logger:info_msg("Cookie which was received is not a requested one~n").
+	
+save_node(Node) ->
+	ok.
+	
 start_timer() ->
-	erlang:send_after(3000, self(), send_alive).
+	erlang:send_after(get_env(timer), self(), send_alive).
 
 get_search() ->
-	erlang:list_to_binary([<<"SEARCH:">>, get_cookie(), <<":">>, get_node(), <<":">>, get_state(), <<":">>, get_timestamp()]).
+	erlang:list_to_binary([<<"SEARCH:">>, get_cookie(), get_node(), <<":">>, get_state(), <<":">>, get_timestamp()]).
+	
+get_local_cookie() ->
+	atom_to_list(erlang:get_cookie()).
 	
 get_cookie() ->
 	encode_cookie(atom_to_list(erlang:get_cookie())).
@@ -155,20 +175,12 @@ get_timestamp() ->
 	
 encode_cookie(Cookie) ->
 	crypto:md5_mac(Cookie, Cookie).
+		
+decode_cookie(Cookie, Local_cookie) ->
+	compare_cookie(Cookie, Local_cookie).
 	
-decode_cookies(Cookies, Cookie, []) ->
-	decode_cookie(Cookies, Cookie, []).
-	
-decode_cookie([], Cookie, Acc) ->
-	Acc;
-decode_cookie([H|T], Cookie, Acc) ->
-	case compare_cookie(H, Cookie) of
-		true -> [Cookie|Acc];
-		false -> Acc
-	end. 
-	
-compare_cookie(H, Cookie) ->
-	H =:= encode_cookie(Cookie).
+compare_cookie(Cookie, Local_cookie) ->
+	Cookie =:= encode_cookie(Local_cookie).
 
 get_env(Key) ->
 	{ok, Value} = application:get_env(searcher, multi_port),
@@ -178,12 +190,16 @@ get_env(Key) ->
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+encode_message_test() ->	
+	?assertEqual([{cookie, <<"Cookie">>}, {node, <<"Node">>}, {state, <<"State">>}, {time, <<"Time">>}],decode_message(<<"SEARCH:Cookie:Node:State:Time">>)).
+
+decode_cookie_test() ->
+	crypto:start(),
+	?assertEqual(true, decode_cookie(encode_cookie("cookie"), "cookie")),
+	?assertEqual(false, decode_cookie(encode_cookie("cookie"), "cookie1")).
+	
 get_env_test() ->
 	application:load(searcher),
 	?assertEqual(1900,get_env(multi_port)).
-	
-get_cookie_test() ->
-	crypto:start(),
-	?assertEqual(["nocookie"], decode_cookies([encode_cookie("nocookie")], "nocookie", [])).
-	
+		
 -endif.
