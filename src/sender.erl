@@ -109,9 +109,10 @@ handle_info(send_alive, State=#state{socket = Socket, port = Port}) ->
 	start_timer(),
 	{noreply, State};
 	
-handle_info({udp, Socket, IPtuple, InPortNo, Packet}, State) ->
-	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [IPtuple, InPortNo, Packet]),
-	decode_message(Packet),
+handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
+	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [Ip, InPortNo, Packet]),
+	Node = decode_message(Packet),
+	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
 
 handle_info(_Info, State) ->
@@ -136,21 +137,27 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
-%% <<"SEARCH:COOKIE:NODE:STATE:TIME">>
-decode_message(<<Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->	
+%% <<"SEARCH:COOKIENODE:STATE:TIME">>
+decode_message(<<_Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->	
 	Is_valid_cookie = decode_cookie(Cookie, get_local_cookie()),
 	[Node, R1] = binary:split(Rest,<<":">>),
 	[State, Time] = binary:split(R1,<<":">>),
-	decode_message(Is_valid_cookie, Node, State, Time).
+	[{valid, Is_valid_cookie},{node, Node}, {state, State}, {time, Time}].
 	
-decode_message(true, Node, State, Time) ->	
-	error_logger:info_msg("Found : ~p in state : ~p ~n", [Node, State]),
-	[{node, Node}, {state, State}, {time, Time}];
-decode_message(false, Node, State, Time) ->	
-	error_logger:info_msg("Cookie which was received is not a requested one~n").
-	
-save_node(Node) ->
+decode_message(false, _Node, _State, _Time, Ip) ->	
+	error_logger:info_msg("Cookie which was received is not a requested one~n"),
 	ok.
+	
+save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
+	error_logger:info_msg("save : ~p in state : ~p ~n", [Node, State]);
+	
+save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
+	error_logger:info_msg("don't save : ~p in state : ~p ~n", [Node, State]).
+	
+get_node_repo() ->
+	Module = get_env(node_repo),
+	Msg = get_env(node_repo_msg),
+	[Module, Msg].
 	
 start_timer() ->
 	erlang:send_after(get_env(timer), self(), send_alive).
@@ -183,7 +190,7 @@ compare_cookie(Cookie, Local_cookie) ->
 	Cookie =:= encode_cookie(Local_cookie).
 
 get_env(Key) ->
-	{ok, Value} = application:get_env(searcher, multi_port),
+	{ok, Value} = application:get_env(searcher, Key),
 	Value.
 %% --------------------------------------------------------------------
 %%% Test functions
@@ -191,7 +198,7 @@ get_env(Key) ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 encode_message_test() ->	
-	?assertEqual([{cookie, <<"Cookie">>}, {node, <<"Node">>}, {state, <<"State">>}, {time, <<"Time">>}],decode_message(<<"SEARCH:Cookie:Node:State:Time">>)).
+	?assertEqual([{valid, false}, {node, <<"Node">>}, {state, <<"State">>}, {time, <<"Time">>}],decode_message(<<"SEARCH:1234567890123456Node:State:Time">>)).
 
 decode_cookie_test() ->
 	crypto:start(),
