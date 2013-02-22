@@ -115,7 +115,8 @@ handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
 	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
 
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+	error_logger:warning_msg("don't understand this message : ~p~n", [Info]),	
     {noreply, State}.
 
 %% --------------------------------------------------------------------
