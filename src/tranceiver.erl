@@ -97,7 +97,7 @@ handle_cast(_Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
-	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [Ip, InPortNo, Packet]),
+	%%error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [Ip, InPortNo, Packet]),
 	Node = decode_message(Packet),
 	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
@@ -110,7 +110,7 @@ handle_info(timeout, _State) ->
 	
 handle_info(send_alive, State=#state{sender = Socket}) ->
 	{ok, {Address, Port}} = inet:sockname(Socket),
-	error_logger:info_msg("1... IP : ~p  Port : ~p~n", [Address, Port]),
+%%	error_logger:info_msg("1... IP : ~p  Port : ~p~n", [Address, Port]),
 	ok = gen_udp:send(Socket, get_env(multi_ip),  get_env(multi_port), get_search()),
 	start_timer(),		
 	{noreply, State};
@@ -150,8 +150,9 @@ decode_message(false, _Node, _State, _Time, Ip) ->
 	error_logger:info_msg("Cookie which was received is not a requested one~n"),
 	ok.
 	
-save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
-	error_logger:info_msg("save : ~p in state : ~p ~n", [Node, State]);
+save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, Ip}]) ->
+	%%error_logger:info_msg("save : ~p in state : ~p ~n", [Node, State]),
+	gen_server:cast(get_env(node_repo), {get_env(node_repo_msg), [{node, Node}, {state, State}, {time, _Time}, {ip, Ip}]});
 	
 save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
 	error_logger:info_msg("don't save : ~p in state : ~p ~n", [Node, State]).
