@@ -1,5 +1,5 @@
 
--module(searcher_sup).
+-module(tranceiver_sup).
 
 -behaviour(supervisor).
 
@@ -24,5 +24,5 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(sender, worker)]} }.
+    {ok, { {one_for_one, 5, 10}, [?CHILD(tranceiver, worker)]} }.
 

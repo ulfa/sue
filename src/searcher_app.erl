@@ -10,7 +10,7 @@
 %% ===================================================================
 	
 start(_StartType, _StartArgs) ->
-    searcher_sup:start_link().
+    tranceiver_sup:start_link().
 
 stop(_State) ->
     ok.

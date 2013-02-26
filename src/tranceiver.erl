@@ -18,7 +18,7 @@
 %%%
 %%% Created : 
 %%% -------------------------------------------------------------------
--module(sender).
+-module(tranceiver).
 
 -behaviour(gen_server).
 
@@ -41,7 +41,7 @@
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
--record(state, {socket, port}).
+-record(state, {sender, receiver}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -96,24 +96,25 @@ handle_cast(_Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info(timeout, _State) ->
-	{ok, Socket} = gen_udp:open(get_env(multi_port), ?OPTIONS),	
-	inet:setopts(Socket ,[{add_membership,{get_env(multi_ip), ip_device:get_ip()}}]),
-	{ok, {Address, Port}} = inet:sockname(Socket),
-	error_logger:info_msg("IP : ~p  Port : ~p~n", [Address, Port]),	
-	start_timer(),
-	{noreply, #state{socket = Socket, port = Port}};
-	
-handle_info(send_alive, State=#state{socket = Socket, port = Port}) ->
-	ok = gen_udp:send(Socket, ip_device:get_ip(),  Port, get_search()),
-	start_timer(),
-	{noreply, State};
-	
 handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
 	error_logger:info_msg("~n~nFrom IP: ~p~nPort: ~p~nData: ~p~n", [Ip, InPortNo, Packet]),
 	Node = decode_message(Packet),
 	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
+
+handle_info(timeout, _State) ->
+	{ok, Sender} = gen_udp:open(0, ?SENDER_OPTIONS),	
+	{ok, Receiver} = gen_udp:open(get_env(multi_port), ?RECEIVER_OPTIONS),	
+	start_timer(),
+	{noreply, #state{sender = Sender, receiver = Receiver}};
+	
+handle_info(send_alive, State=#state{sender = Socket}) ->
+	{ok, {Address, Port}} = inet:sockname(Socket),
+	error_logger:info_msg("1... IP : ~p  Port : ~p~n", [Address, Port]),
+	ok = gen_udp:send(Socket, get_env(multi_ip),  get_env(multi_port), get_search()),
+	start_timer(),		
+	{noreply, State};
+		  
 
 handle_info(Info, State) ->
 	error_logger:warning_msg("don't understand this message : ~p~n", [Info]),	

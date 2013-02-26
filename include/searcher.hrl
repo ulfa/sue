@@ -1,2 +1,17 @@
--define(OPTIONS,  [binary, inet,{broadcast,true},{reuseaddr, true},{multicast_ttl, 32}, {ip, ip_device:get_ip()}, {multicast_if, ip_device:get_ip()},{multicast_loop,true}, {active,true}]).
+
+-define(RECEIVER_OPTIONS,[ 
+				binary,
+				{reuseaddr, true},				
+				{ip, get_env(multi_ip)},
+				{multicast_loop,true}, 				
+				{broadcast, true}, 
+				{active,true},
+				{add_membership, {get_env(multi_ip), ip_device:get_ip()}}]).
+	
+-define(SENDER_OPTIONS,[ 
+				binary,
+				{multicast_ttl, 32},	
+				{multicast_loop,true},		
+				{ip, ip_device:get_ip()}]).
+
 
