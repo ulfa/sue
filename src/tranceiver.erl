@@ -125,7 +125,9 @@ handle_info(Info, State) ->
 %% Description: Shutdown the server
 %% Returns: any (ignored by gen_server)
 %% --------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, State=#state{sender = Sender, receiver = Receiver}) ->
+	gen_udp:close(Sender),
+	gen_udp:close(Receiver),
     ok.
 
 %% --------------------------------------------------------------------
