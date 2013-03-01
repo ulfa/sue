@@ -131,7 +131,7 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%keyreplace(Key, N, TupleList1, NewTuple) -> TupleList2
 add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store) ->
-	lists:keystore(Node, 1, Store, {Node, [{state, State1}, {time, Time}, {ip, Ip}]}).
+	lists:keystore(Node, 1, Store, {Node, [{ip, Ip}, {state, State1}, {time, Time}]}).
 
 get_state([], Acc) ->
 	Acc;
