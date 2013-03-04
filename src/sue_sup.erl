@@ -1,4 +1,4 @@
--module(searcher_sup).
+-module(sue_sup).
 
 -behaviour(supervisor).
 

@@ -25,7 +25,7 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
--include("../include/searcher.hrl").
+-include("../include/sue.hrl").
 %% --------------------------------------------------------------------
 %% External exports
 
@@ -190,7 +190,7 @@ compare_cookie(Cookie, Local_cookie) ->
 	Cookie =:= encode_cookie(Local_cookie).
 
 get_env(Key) ->
-	{ok, Value} = application:get_env(searcher, Key),
+	{ok, Value} = application:get_env(sue, Key),
 	Value.
 %% --------------------------------------------------------------------
 %%% Test functions
@@ -206,7 +206,7 @@ decode_cookie_test() ->
 	?assertEqual(false, decode_cookie(encode_cookie("cookie"), "cookie1")).
 	
 get_env_test() ->
-	application:load(searcher),
+	application:load(sue),
 	?assertEqual(1900,get_env(multi_port)).
 		
 -endif.

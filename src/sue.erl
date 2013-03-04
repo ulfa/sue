@@ -18,7 +18,7 @@
 %%%
 %%% Created : 16.02.2012
 %%% -------------------------------------------------------------------
--module(searcher).
+-module(sue).
 
 %% Application callbacks
 -export([start/0, stop/0]).
