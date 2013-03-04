@@ -24,6 +24,7 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
+-include("../include/searcher.hrl").
 %% --------------------------------------------------------------------
 %% External exports
 
@@ -39,7 +40,11 @@ get_store() ->
 	gen_server:call(?MODULE, get_store).
 
 add_node([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]) ->
-	gen_server:cast(?MODULE, {save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]}).
+	gen_server:cast(?MODULE, {save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]});
+
+add_node(Node) ->
+    gen_server:cast(?MODULE, {save, Node}).
+
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
@@ -96,6 +101,11 @@ handle_cast({save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]}, #st
 	New_store = add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store),
     {noreply, State#state{store = New_store}};
 
+handle_cast({save, Node}, #state{store = Store} = State) ->
+    error_logger:info_msg("save node : ~p", [Node]),
+    New_store = add([{node, Node}, {state, ?DEAD}, {time, get_timestamp()}, {ip, {0,0,0,0}}], Store),
+    {noreply, State#state{store = New_store}};
+
 handle_cast(Msg, State) ->
 	error_logger:info_msg("got unknown message : ~p~n", [Msg]),
     {noreply, State}.
@@ -145,14 +155,32 @@ is_alive(pang) ->
 is_alive(Node) ->
 	is_alive(net_adm:ping(Node)).
 
-%% --------------------------------------------------------------------
-%%% Test functions
-%% --------------------------------------------------------------------
+get_timestamp() ->
+    date:get_timestamp().
+
+ip_to_string(Ip) ->
+	ip_device:ip_as_string(Ip).
+	
+timestamp_to_date(Time) when is_binary(Time) ->
+	date:get_formated_date(calendar:gregorian_seconds_to_datetime(erlang:list_to_integer(erlang:binary_to_list(Time)))).
+
+get_store_data([], Acc) ->
+	Acc;
+get_store_data([{Node, [{ip, Ip}, {state, State1}, {time, Time}]}|T], Acc) ->
+	get_store_data(T, [[{Node, [{ip, ip_to_string(Ip)}, {state, State1}, {time, timestamp_to_date(Time)}]}]|Acc]).
 %% --------------------------------------------------------------------
 %%% Test functions
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+timestamp_to_date_test() ->
+	?assertEqual("2013-03-01 13:52:24", timestamp_to_date(erlang:list_to_binary("63529365144"))).
+
+get_store_data_test() ->
+	A=[{"Node1", [{ip, {192,168,1,1}}, {state, "Dead"}, {time, erlang:list_to_binary("63529365144")}]}, 
+	{"Node2", [{ip, {192,168,1,2}}, {state, "Activ"}, {time, erlang:list_to_binary("63529365144")}]}],
+	B=get_store_data(A, []),
+	?assertEqual(A,B).
 add_test() ->
-	?assertEqual([{"node", [{state, "aktiv"}, {time, "time"}, {ip, "Ip"}]}], add([{node, "node"}, {state, "aktiv"}, {time, "time"}, {ip, "Ip"}], [])).
+	?assertEqual([{"node", [{ip, "Ip"}, {state, "aktiv"}, {time, "time"}]}], add([{node, "node"}, {state, "aktiv"}, {time, "time"}, {ip, "Ip"}], [])).
 -endif.

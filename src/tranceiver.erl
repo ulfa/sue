@@ -175,10 +175,10 @@ get_node() ->
 	erlang:atom_to_binary(node(), utf8).	
 
 get_state() ->
-	<<"ACTIV">>.
+	?ALIVE.
 
 get_timestamp() ->
-	erlang:list_to_binary(erlang:integer_to_list(calendar:datetime_to_gregorian_seconds(calendar:local_time()))).
+	date:get_timestamp().
 	
 encode_cookie(Cookie) ->
 	crypto:md5_mac(Cookie, Cookie).

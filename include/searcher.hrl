@@ -14,4 +14,6 @@
 				{multicast_loop,true},		
 				{ip, ip_device:get_ip()}]).
 
+-define(ALIVE, <<"Alive">>).
+-define(DEAD, <<"Dead">>).
 
