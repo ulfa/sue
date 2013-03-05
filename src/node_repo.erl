@@ -70,6 +70,7 @@ start() ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+	net_kernel:monitor_nodes(true),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -97,8 +98,9 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]}, #state{store = Store} = State) ->
-	error_logger:info_msg("save node : ~p in state ~p with time : ~p~n", [Node, State1, Time]),		
+	error_logger:info_msg("save node : ~p in state ~p with time : ~p~n", [Node, State1, Time]),			
 	New_store = add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store),
+	ping_node(Node),
     {noreply, State#state{store = New_store}};
 
 handle_cast({save, Node}, #state{store = Store} = State) ->
@@ -117,6 +119,12 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_info({nodeup, Node}, #state{store = Store} = State) ->
+	error_logger:info_msg("nodeup : ~p ~n", [Node]),
+	{noreply, State};
+handle_info({nodedown, Node}, #state{store = Store} = State) ->
+	error_logger:info_msg("nodedown : ~p ~n", [Node]),
+	{noreply, State};
 handle_info(Info, State) ->
     {noreply, State}.
 
@@ -139,6 +147,11 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
+ping_node(Node) when is_binary(Node) ->
+	net_adm:ping(erlang:binary_to_atom(Node, latin1));
+ping_node(Node)  ->
+	net_adm:ping(Node).
+
 %%keyreplace(Key, N, TupleList1, NewTuple) -> TupleList2
 add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store) ->
 	lists:keystore(Node, 1, Store, {Node, [{ip, Ip}, {state, State1}, {time, Time}]}).
@@ -179,7 +192,7 @@ timestamp_to_date_test() ->
 get_store_data_test() ->
 	A=[{"Node1", [{ip, {192,168,1,1}}, {state, "Dead"}, {time, erlang:list_to_binary("63529365144")}]}, 
 	{"Node2", [{ip, {192,168,1,2}}, {state, "Activ"}, {time, erlang:list_to_binary("63529365144")}]}],
-	B=get_store_data(A, []),
+	B = get_store_data(A, []),
 	?assertEqual(A,B).
 add_test() ->
 	?assertEqual([{"node", [{ip, "Ip"}, {state, "aktiv"}, {time, "time"}]}], add([{node, "node"}, {state, "aktiv"}, {time, "time"}, {ip, "Ip"}], [])).
