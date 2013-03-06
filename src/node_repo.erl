@@ -25,6 +25,7 @@
 %% Include files
 %% --------------------------------------------------------------------
 -include("../include/sue.hrl").
+-include_lib("runtime_tools/include/observer_backend.hrl").
 %% --------------------------------------------------------------------
 %% External exports
 
@@ -32,7 +33,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0]).
 -export([start/0]).
--export([get_store/0, add_node/1, is_alive/1]).
+-export([get_store/0, add_node/1]).
 %% ====================================================================
 %% External functions
 %% ====================================================================
@@ -97,14 +98,13 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_cast({save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]}, #state{store = Store} = State) ->
-	error_logger:info_msg("save node : ~p in state ~p with time : ~p~n", [Node, State1, Time]),			
-	New_store = add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store),
-	ping_node(Node),
+handle_cast({save, [{node, Node}, {state, _State}, {time, Time}, {ip, Ip}]}, #state{store = Store} = State) ->
+	%%error_logger:info_msg("save node : ~p in state ~p with time : ~p~n", [Node, State1, Time]),			
+	New_store = add([{node, Node}, {state, ping_node(Node)}, {time, Time}, {ip, Ip}], Store),
     {noreply, State#state{store = New_store}};
 
 handle_cast({save, Node}, #state{store = Store} = State) ->
-    error_logger:info_msg("save node : ~p", [Node]),
+    %%error_logger:info_msg("save node : ~p", [Node]),
     New_store = add([{node, Node}, {state, ?DEAD}, {time, get_timestamp()}, {ip, {0,0,0,0}}], Store),
     {noreply, State#state{store = New_store}};
 
@@ -126,6 +126,7 @@ handle_info({nodedown, Node}, #state{store = Store} = State) ->
 	error_logger:info_msg("nodedown : ~p ~n", [Node]),
 	{noreply, State};
 handle_info(Info, State) ->
+	error_logger:info_msg("Info : ~p ~n", [Info]),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -148,25 +149,21 @@ code_change(OldVsn, State, Extra) ->
 %%% Internal functions
 %% --------------------------------------------------------------------
 ping_node(Node) when is_binary(Node) ->
-	net_adm:ping(erlang:binary_to_atom(Node, latin1));
+	ping_node(erlang:binary_to_atom(Node, latin1));
 ping_node(Node)  ->
-	net_adm:ping(Node).
+	case net_adm:ping(Node) of
+		pang -> get_state(pang); 
+		pong -> get_state(pong)
+	end.
 
 %%keyreplace(Key, N, TupleList1, NewTuple) -> TupleList2
 add([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}], Store) ->
 	lists:keystore(Node, 1, Store, {Node, [{ip, Ip}, {state, State1}, {time, Time}]}).
 
-get_state([], Acc) ->
-	Acc;
-get_state([Node|Nodes], Acc) ->
-	ok.
-	
-is_alive(pong) ->
-	true;
-is_alive(pang) ->
-	false;
-is_alive(Node) ->
-	is_alive(net_adm:ping(Node)).
+get_state(pang) ->
+	?DEAD;
+get_state(pong) ->
+	?ALIVE.
 
 get_timestamp() ->
     date:get_timestamp().
