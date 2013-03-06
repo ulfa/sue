@@ -43,8 +43,8 @@ get_store() ->
 add_node([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]) ->
 	gen_server:cast(?MODULE, {save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]});
 
-add_node(Node) ->
-    gen_server:cast(?MODULE, {save, Node}).
+add_node(Node) when is_atom(Node)->
+    gen_server:cast(?MODULE, {save, erlang:atom_to_binary(Node, latin1)}).
 
 %% --------------------------------------------------------------------
 %% record definitions
@@ -105,7 +105,8 @@ handle_cast({save, [{node, Node}, {state, _State}, {time, Time}, {ip, Ip}]}, #st
 
 handle_cast({save, Node}, #state{store = Store} = State) ->
     %%error_logger:info_msg("save node : ~p", [Node]),
-    New_store = add([{node, Node}, {state, ?DEAD}, {time, get_timestamp()}, {ip, {0,0,0,0}}], Store),
+    New_store = add([{node, Node}, {state, ?UNKNOWN}, {time, get_timestamp()}, {ip, {0,0,0,0}}], Store),
+	ping_node(Node),
     {noreply, State#state{store = New_store}};
 
 handle_cast(Msg, State) ->
@@ -121,10 +122,10 @@ handle_cast(Msg, State) ->
 %% --------------------------------------------------------------------
 handle_info({nodeup, Node}, #state{store = Store} = State) ->
 	error_logger:info_msg("nodeup : ~p ~n", [Node]),
-	{noreply, State};
+	{noreply, 	State#state{store = update(Node, ?ALIVE, Store)}};
 handle_info({nodedown, Node}, #state{store = Store} = State) ->
 	error_logger:info_msg("nodedown : ~p ~n", [Node]),
-	{noreply, State};
+	{noreply, 	State#state{store = update(Node, ?DEAD, Store)}};
 handle_info(Info, State) ->
 	error_logger:info_msg("Info : ~p ~n", [Info]),
     {noreply, State}.
@@ -148,6 +149,13 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
+update(Node, State1, Store) ->
+	N = erlang:atom_to_binary(Node, latin1),
+	{value, {N, L1}} = lists:keysearch(N, 1, Store),
+	L3 = lists:keyreplace(state, 1, L1, {state, State1}),
+	lists:keyreplace(N, 1, Store, {N, L3}).
+	
+
 ping_node(Node) when is_binary(Node) ->
 	ping_node(erlang:binary_to_atom(Node, latin1));
 ping_node(Node)  ->

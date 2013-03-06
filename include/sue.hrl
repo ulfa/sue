@@ -16,4 +16,6 @@
 
 -define(ALIVE, <<"Alive">>).
 -define(DEAD, <<"Dead">>).
+-define(UNKNOWN, <<"Unknown">>).
+
 
