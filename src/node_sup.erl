@@ -25,8 +25,8 @@
 %% --------------------------------------------------------------------
 -export([start_link/0, start_child/1]).
 -export([init/1]).
--define(LHS(Node),{node, {node, start_link, [Node]}, transient, brutal_kill, worker, [node]}).
--define(LHS(),{node, {node, start_link, []}, transient, brutal_kill, worker, [node]}).
+
+-define(LHS(),{node, {node, start_link, []}, temporary, brutal_kill, worker, [node]}).
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -34,7 +34,7 @@ start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_child(Node) ->
-	supervisor:start_child(node_sup, [Node]).
+	supervisor:start_child(?MODULE, [Node]).
 
 %% ===================================================================
 %% Supervisor callbacks

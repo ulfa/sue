@@ -33,18 +33,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0]).
 -export([start/0]).
--export([get_store/0, add_node/1]).
+-export([get_store/0]).
 %% ====================================================================
 %% External functions
 %% ====================================================================
 get_store() ->
 	gen_server:call(?MODULE, get_store).
-
-add_node([{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]) ->
-	gen_server:cast(?MODULE, {save, [{node, Node}, {state, State1}, {time, Time}, {ip, Ip}]});
-
-add_node(Node) when is_atom(Node)->
-    gen_server:cast(?MODULE, {save, erlang:atom_to_binary(Node, latin1)}).
 
 %% --------------------------------------------------------------------
 %% record definitions
@@ -70,8 +64,7 @@ start() ->
 %%          ignore               |
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
-init([]) ->
-	net_kernel:monitor_nodes(true),
+init([]) ->	
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -120,10 +113,6 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info({nodeup, Node}, #state{store = Store} = State) ->
-	{noreply, 	State#state{store = update(Node, ?ALIVE, Store)}};
-handle_info({nodedown, Node}, #state{store = Store} = State) ->
-	{noreply, 	State#state{store = update(Node, ?DEAD, Store)}};
 handle_info(Info, State) ->
 	error_logger:info_msg("Info : ~p ~n", [Info]),
     {noreply, State}.

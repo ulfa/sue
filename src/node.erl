@@ -24,6 +24,8 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
+-include("../include/sue.hrl").
+-include_lib("runtime_tools/include/observer_backend.hrl").
 %% --------------------------------------------------------------------
 %% External exports
 -define(MAX_QUEUE_LENGTH, 19).
@@ -32,13 +34,17 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/1, start/1]).
 
+-export([get_status/1]).
+
 %% ====================================================================
 %% External functions
 %% ====================================================================
+get_status(Node) when is_atom(Node)->
+	gen_server:call(Node, get_state).
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
--record(state, {time, node}).
+-record(state, {status = ?UNKNOWN, node, time, ip = {0,0,0,0}}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -47,7 +53,8 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Node) ->
-    gen_server:start_link({local, erlang:list_to_atom(Node)},?MODULE, [Node], []).
+    gen_server:start_link({local, Node}, ?MODULE, [Node], []).
+	
 start(Node) ->
 	start_link(Node).	
 %% --------------------------------------------------------------------
@@ -59,7 +66,8 @@ start(Node) ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([Node]) ->
-    {ok, #state{time=[], node = Node}, 0}.
+	net_kernel:monitor_nodes(true),
+    {ok, #state{time=[], node = erlang:atom_to_binary(Node, latin1)}, 0}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
@@ -70,7 +78,10 @@ init([Node]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-	handle_call(Request, From, State) ->
+handle_call(get_state, From, #state{status = Status} = State) ->
+    {reply, Status, State};
+
+handle_call(Request, From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 %% --------------------------------------------------------------------
@@ -89,9 +100,17 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info(timeout, State) ->
-	start_timer(),
+handle_info(timeout, #state{node = Node} = State) ->
+	ping_node(Node),
     {noreply, State};
+
+handle_info({nodeup, Node}, State) ->
+	error_logger:info_msg("nodeup : ~p~n", [Node]),
+	{noreply, State#state{status=?ALIVE}};
+handle_info({nodedown, Node}, State) ->
+	error_logger:info_msg("nodedown : ~p~n", [Node]),
+	{noreply, State#state{status=?DEAD}};
+
 handle_info(Info, State) ->
     {noreply, State}.
 %% --------------------------------------------------------------------
@@ -113,8 +132,25 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
-		start_timer() ->
+start_timer() ->
 	erlang:send_after(?TIMER, self(), {next_ping}).	
+
+ping_node(Node) when is_binary(Node) ->
+	ping_node(erlang:binary_to_atom(Node, latin1));
+ping_node(Node)  ->
+	case net_adm:ping(Node) of
+		pang -> get_state(pang); 
+		pong -> get_state(pong)
+	end.
+	
+get_state(pang) ->
+	?DEAD;
+get_state(pong) ->
+	?ALIVE.
+
+get_timestamp() ->
+    date:get_timestamp().
+
 %% --------------------------------------------------------------------
 %%% Test functions
 %% --------------------------------------------------------------------
