@@ -26,6 +26,8 @@
 -export([start_link/0, start_child/1]).
 -export([init/1]).
 
+-export([get_children/0]).
+
 -define(LHS(),{node, {node, start_link, []}, temporary, brutal_kill, worker, [node]}).
 %% ===================================================================
 %% API functions
@@ -42,3 +44,14 @@ start_child(Node) ->
 init([]) ->		
 	RestartStrategy = {simple_one_for_one, 1, 3600},
     {ok, {RestartStrategy, [?LHS()]}}.
+
+get_children() ->
+	List = supervisor:which_children(?MODULE),
+	get_children(List, []).
+
+get_children([], Acc) ->
+	Acc;
+get_children([{_Id, Node, _Type, _Module}|T], Acc) ->
+	get_children(T, [node:get_status(Node)|Acc]).	
+	
+	

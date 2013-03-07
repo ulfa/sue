@@ -22,9 +22,16 @@
 
 %% Application callbacks
 -export([start/0, stop/0]).
+-export([get_store/0, add_node/1]).
 
-  start() ->
-    application:start(?MODULE).
+	start() ->
+	  application:start(?MODULE).
 
-  stop() ->
-    application:stop(?MODULE).
+	stop() ->
+		application:stop(?MODULE).
+
+	get_store() ->
+		[].
+		
+	add_node(Node) when is_atom(Node) ->
+		node_sup:start_child(Node).

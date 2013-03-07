@@ -39,6 +39,9 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
+get_status(Node) when is_pid(Node)->
+	gen_server:call(Node, get_state);
+	
 get_status(Node) when is_atom(Node)->
 	gen_server:call(Node, get_state).
 %% --------------------------------------------------------------------
@@ -67,7 +70,7 @@ start(Node) ->
 %% --------------------------------------------------------------------
 init([Node]) ->
 	net_kernel:monitor_nodes(true),
-    {ok, #state{time=[], node = erlang:atom_to_binary(Node, latin1)}, 0}.
+    {ok, #state{node = erlang:atom_to_binary(Node, latin1), time = get_timestamp()}, 0}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
@@ -78,8 +81,8 @@ init([Node]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call(get_state, From, #state{status = Status} = State) ->
-    {reply, Status, State};
+handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node} = State) ->	
+    {reply, {Node, [{ip, Ip}, {state, Status}, {time, Time}]}, State};
 
 handle_call(Request, From, State) ->
     Reply = ok,
