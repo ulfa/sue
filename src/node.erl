@@ -47,7 +47,7 @@ get_status(Node) when is_atom(Node)->
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
--record(state, {status = ?UNKNOWN, node, time, ip = {0,0,0,0}}).
+-record(state, {status = ?UNKNOWN, node, time, ip = {0,0,0,0}, reason=[]}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -82,8 +82,8 @@ init([Node]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node} = State) ->	
-    {reply, {Node, [{ip, Ip}, {state, Status}, {time, Time}]}, State};
+handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) ->	
+    {reply, {Node, [{ip, Ip}, {state, Status}, {time, Time}, {reason, Reason}]}, State};
 
 handle_call(Request, From, State) ->
     Reply = ok,
@@ -96,8 +96,8 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({init_phase_2, Node}, State) ->
-	error_logger:info_msg(".init_phase2~n"),
-	{noreply, State#state{status=ping_node(Node)}};
+	start_timer(Node),
+	{noreply, State#state{status=ping_node(Node), reason=[]}};
 
 handle_cast(Msg, State) ->
     {noreply, State}.
@@ -108,16 +108,19 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_info({update, Node}, State) ->
+	start_timer(Node),
+	{noreply, State#state{status=ping_node(Node), reason=[]}};
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
 	error_logger:info_msg("........ nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
-		true -> {noreply, State#state{status=?ALIVE}};
+		true -> {noreply, State#state{status=?ALIVE, reason=InfoList}};
 		false -> {noreply, State}
 	end;
 handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 	error_logger:info_msg(".........nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
-		true -> {noreply, State#state{status=?DEAD}};
+		true -> {noreply, State#state{status=?DEAD, reason=InfoList}};
 		false -> {noreply, State}
 	end;
 
@@ -142,6 +145,9 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
+start_timer(Node) ->
+	erlang:send_after(5000, self(), {update, Node}).		
+	
 ping_node(Node) when is_binary(Node) ->
 	ping_node(erlang:binary_to_atom(Node, latin1));
 ping_node(Node)  ->
