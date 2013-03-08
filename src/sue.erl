@@ -24,7 +24,7 @@
 -export([start/0, stop/0]).
 -export([get_store/0, add_node/1]).
 
-	start() ->
+	start() ->		
 	  application:start(?MODULE).
 
 	stop() ->

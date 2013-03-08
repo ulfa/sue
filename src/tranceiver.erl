@@ -154,10 +154,12 @@ decode_message(false, _Node, _State, _Time, Ip) ->
 	
 save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, Ip}]) ->
 	%%error_logger:info_msg("save : ~p in state : ~p ~n", [Node, State]),
-	gen_server:cast(node_repo, {save, [{node, Node}, {state, State}, {time, _Time}, {ip, Ip}]});
+	%%gen_server:cast(node_repo, {save, [{node, Node}, {state, State}, {time, _Time}, {ip, Ip}]});
+	node_sup:start_child(Node);
 	
 save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
-	error_logger:info_msg("don't save node: ~p ,because it doesn't belong to the same cookie! ~n", [Node]).
+	%%error_logger:info_msg("don't save node: ~p ,because it doesn't belong to the same cookie! ~n", [Node]),
+	ok.
 		
 start_timer() ->
 	erlang:send_after(get_env(timer), self(), send_alive).

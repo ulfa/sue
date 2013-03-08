@@ -69,8 +69,9 @@ start(Node) ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([Node]) ->
-	net_kernel:monitor_nodes(true),
-    {ok, #state{node = erlang:atom_to_binary(Node, latin1), time = get_timestamp()}, 0}.
+	net_kernel:monitor_nodes(true, [nodedown_reason]),	
+	gen_server:cast(self(), {init_phase_2, Node}),
+    {ok, #state{node = erlang:atom_to_binary(Node, latin1), time = get_timestamp()}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
@@ -94,6 +95,10 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast({init_phase_2, Node}, State) ->
+	error_logger:info_msg(".init_phase2~n"),
+	{noreply, State#state{status=ping_node(Node)}};
+
 handle_cast(Msg, State) ->
     {noreply, State}.
 %% --------------------------------------------------------------------
@@ -103,16 +108,18 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info(timeout, #state{node = Node} = State) ->
-	ping_node(Node),
-    {noreply, State};
-
-handle_info({nodeup, Node}, State) ->
-	error_logger:info_msg("nodeup : ~p~n", [Node]),
-	{noreply, State#state{status=?ALIVE}};
-handle_info({nodedown, Node}, State) ->
-	error_logger:info_msg("nodedown : ~p~n", [Node]),
-	{noreply, State#state{status=?DEAD}};
+handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
+	error_logger:info_msg("........ nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
+		true -> {noreply, State#state{status=?ALIVE}};
+		false -> {noreply, State}
+	end;
+handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
+	error_logger:info_msg(".........nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
+		true -> {noreply, State#state{status=?DEAD}};
+		false -> {noreply, State}
+	end;
 
 handle_info(Info, State) ->
     {noreply, State}.
@@ -135,9 +142,6 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
-start_timer() ->
-	erlang:send_after(?TIMER, self(), {next_ping}).	
-
 ping_node(Node) when is_binary(Node) ->
 	ping_node(erlang:binary_to_atom(Node, latin1));
 ping_node(Node)  ->
