@@ -34,4 +34,4 @@
 		node_sup:get_children().
 		
 	add_node(Node) when is_atom(Node) ->
-		node_sup:start_child(Node).
+		node_sup:start_child([Node, {0,0,0,0}]).

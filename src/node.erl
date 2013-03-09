@@ -32,7 +32,7 @@
 -define (TIMER, 30000).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([start_link/1, start/1]).
+-export([start_link/2, start/1]).
 
 -export([get_status/1]).
 
@@ -47,7 +47,7 @@ get_status(Node) when is_atom(Node)->
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
--record(state, {status = ?UNKNOWN, node, time, ip = {0,0,0,0}, reason=[]}).
+-record(state, {status = ?UNKNOWN, node, time, ip, reason=[]}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -55,11 +55,11 @@ get_status(Node) when is_atom(Node)->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    gen_server:start_link({local, Node}, ?MODULE, [Node], []).
+start_link(Node, Ip) ->
+    gen_server:start_link({local, Node}, ?MODULE, [Node, Ip], []).
 	
-start(Node) ->
-	start_link(Node).	
+start([Node, Ip]) ->
+	start_link(Node, Ip).	
 %% --------------------------------------------------------------------
 %% Function: init/1
 %% Description: Initiates the server
@@ -68,10 +68,10 @@ start(Node) ->
 %%          ignore               |
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
-init([Node]) ->
+init([Node, Ip]) ->
 	net_kernel:monitor_nodes(true, [nodedown_reason]),	
 	gen_server:cast(self(), {init_phase_2, Node}),
-    {ok, #state{node = erlang:atom_to_binary(Node, latin1), time = get_timestamp()}}.
+    {ok, #state{node = erlang:atom_to_binary(Node, latin1), ip = Ip, time = get_timestamp()}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
