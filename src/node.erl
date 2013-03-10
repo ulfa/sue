@@ -34,7 +34,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
 
--export([get_status/1]).
+-export([get_status/1, sys_info/1, etop/1]).
 
 %% ====================================================================
 %% External functions
@@ -145,6 +145,12 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
+etop(Node) ->
+	rpc:call(Node, observer_backend, etop_collect, [self()]).
+	
+sys_info(Node) ->
+	rpc:call(Node, observer_backend, sys_info, []).
+	
 start_timer(Node) ->
 	erlang:send_after(5000, self(), {update, Node}).		
 	

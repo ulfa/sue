@@ -22,7 +22,7 @@
 
 %% Application callbacks
 -export([start/0, stop/0]).
--export([get_children/0, add_node/1]).
+-export([get_children/0, add_node/1, sys_info/1, etop/1]).
 
 	start() ->		
 	  application:start(?MODULE).
@@ -35,3 +35,9 @@
 		
 	add_node(Node) when is_atom(Node) ->
 		node_sup:start_child([Node, {0,0,0,0}]).
+	
+	sys_info(Node) ->
+		node:sys_info(Node).
+	
+	etop(Node) ->
+		node:etop(Node).
