@@ -22,7 +22,7 @@
 
 %% Application callbacks
 -export([start/0, stop/0]).
--export([get_children/0, add_node/1, sys_info/1, etop/1]).
+-export([get_children/0, add_node/1, sys_info/1, etop/1, memory/1]).
 
 	start() ->		
 	  application:start(?MODULE).
@@ -39,5 +39,8 @@
 	sys_info(Node) ->
 		node:sys_info(Node).
 	
-	etop(Node_target) ->
-		node:etop(Node_target).
+	etop(Node) ->
+		node:etop(Node).
+
+	memory(Node) ->
+		node:memory(Node).
