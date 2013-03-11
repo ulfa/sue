@@ -34,13 +34,13 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
 
--export([get_status/1, sys_info/1, etop/2]).
+-export([get_status/1, sys_info/1, etop/1]).
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
-etop(Node, Node_target) ->
-	gen_server:cast(Node, {etop, Node_target}).
+etop(Node) ->
+	gen_server:cast(erlang:node(), {etop, Node}).
 	
 get_status(Node) when is_pid(Node)->
 	gen_server:call(Node, get_state);
