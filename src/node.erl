@@ -34,11 +34,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
 
--export([get_status/1, sys_info/1, etop/1]).
+-export([get_status/1, sys_info/1, etop/2]).
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+etop(Node, Node_target) ->
+	gen_server:cast(Node, {etop, Node_target}).
+	
 get_status(Node) when is_pid(Node)->
 	gen_server:call(Node, get_state);
 	
@@ -98,6 +101,10 @@ handle_call(Request, From, State) ->
 handle_cast({init_phase_2, Node}, State) ->
 	start_timer(Node),
 	{noreply, State#state{status=ping_node(Node), reason=[]}};
+	
+handle_cast({etop, Node_target}, #state{node = Node} = State) ->
+	etop1(Node, Node_target),
+	{noreply, State};
 
 handle_cast(Msg, State) ->
     {noreply, State}.
@@ -125,6 +132,7 @@ handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 	end;
 
 handle_info(Info, State) ->
+	error_logger:info_msg(".....~p~n", [Info]),
     {noreply, State}.
 %% --------------------------------------------------------------------
 %% Function: terminate/2
@@ -145,8 +153,8 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
-etop(Node) ->
-	rpc:call(Node, observer_backend, etop_collect, [self()]).
+etop1(Self, Node_target) ->
+	spawn_link(Node_target, observer_backend, etop_collect, [erlang:whereis(erlang:binary_to_atom(Self, latin1))]).
 	
 sys_info(Node) ->
 	rpc:call(Node, observer_backend, sys_info, []).
