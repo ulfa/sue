@@ -28,8 +28,6 @@
 -include_lib("runtime_tools/include/observer_backend.hrl").
 %% --------------------------------------------------------------------
 %% External exports
--define(MAX_QUEUE_LENGTH, 19).
--define (TIMER, 30000).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
@@ -162,7 +160,10 @@ etop1(Self, Node_target) ->
 	spawn_link(Node_target, observer_backend, etop_collect, [erlang:whereis(erlang:binary_to_atom(Self, latin1))]).
 	
 sys_info1(Node) ->
-	rpc:call(Node, observer_backend, sys_info, []).
+	case rpc:call(Node, observer_backend, sys_info, []) of
+		{badrpc,nodedown} -> [];
+		Any -> Any
+	end. 
 	
 memory1(Node) ->
 	rpc:call(Node, erlang, memory, []).
