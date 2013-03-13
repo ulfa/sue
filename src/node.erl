@@ -89,7 +89,7 @@ init([Node, Ip]) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) ->	
-    {reply, {Node, [{ip, Ip}, {state, Status}, {time, Time}, {reason, Reason}]}, State};
+    {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
 
 handle_call(Request, From, State) ->
     Reply = ok,
