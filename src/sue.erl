@@ -37,7 +37,7 @@
 		node_sup:start_child([Node, {0,0,0,0}]).
 	
 	sys_info(Node) ->
-		node:sys_info(Node).
+		lists:keysort(1,node:sys_info(Node)).
 	
 	etop(Node) ->
 		node:etop(Node).
