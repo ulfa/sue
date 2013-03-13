@@ -121,16 +121,17 @@ handle_cast(Msg, State) ->
 handle_info({update, Node}, State) ->
 	start_timer(Node),
 	{noreply, State#state{status=ping_node(Node), reason=[]}};
+	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
 	error_logger:info_msg("........ nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
-		true -> {noreply, State#state{status=?ALIVE, reason=InfoList}};
+		true -> {noreply, State#state{status=?ALIVE, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 	error_logger:info_msg(".........nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
-		true -> {noreply, State#state{status=?DEAD, reason=InfoList}};
+		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 
