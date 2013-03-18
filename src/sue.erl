@@ -23,6 +23,7 @@
 %% Application callbacks
 -export([start/0, stop/0]).
 -export([get_children/0, add_node/1, sys_info/1, etop/1, memory/1]).
+-export([get_applications/1]).
 
 	start() ->		
 	  application:start(?MODULE).
@@ -44,3 +45,7 @@
 
 	memory(Node) ->
 		node:memory(Node).
+
+	get_applications(Node) when is_atom(Node)->
+		process_info:start(),
+		process_info:get_applications(Node).
