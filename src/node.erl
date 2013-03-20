@@ -135,6 +135,15 @@ handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 		false -> {noreply, State}
 	end;
 
+handle_info({Pid, Etop}, State) when is_pid(Pid)->
+	error_logger:info_msg("0.....~p~n", [Pid]),
+	Etop_proc_info = sue_converter:recordlist_to_proplist(Etop#etop_info.procinfo, []),
+	Etop_info = sue_converter:record_to_proplist(Etop#etop_info{procinfo=[]}),
+	error_logger:info_msg("1.....~p~n", [Etop_info]),
+	error_logger:info_msg("2.....~p~n", [Etop_proc_info]),
+	Pid ! {Etop_info, Etop_proc_info},
+    {noreply, State};
+
 handle_info(Info, State) ->
 	error_logger:info_msg(".....~p~n", [Info]),
     {noreply, State}.
