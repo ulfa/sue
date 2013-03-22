@@ -42,8 +42,9 @@ memory(Node) ->
 
 sys_info(Node) ->
 	sys_info1(Node).	
-etop(Node) ->
-	gen_server:cast(erlang:node(), {etop, Node}).
+	
+etop(Node) when is_atom(Node)->
+	gen_server:call(Node, {etop, Node}).
 	
 get_status(Node) when is_pid(Node)->
 	gen_server:call(Node, get_state);
@@ -91,6 +92,10 @@ init([Node, Ip]) ->
 handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) ->	
     {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
 
+handle_call({etop, Node}, From, State) ->
+	Reply = etop1(Node),
+	{reply, Reply, State};
+	
 handle_call(Request, From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -105,10 +110,6 @@ handle_cast({init_phase_2, Node}, State) ->
 	start_timer(Node),
 	{noreply, State#state{status=ping_node(Node), reason=[]}};
 	
-handle_cast({etop, Node_target}, #state{node = Node} = State) ->
-	etop1(Node, Node_target),
-	{noreply, State};
-
 handle_cast(Msg, State) ->
     {noreply, State}.
 %% --------------------------------------------------------------------
@@ -166,8 +167,11 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
-etop1(Self, Node_target) ->
-	spawn_link(Node_target, observer_backend, etop_collect, [erlang:whereis(erlang:binary_to_atom(Self, latin1))]).
+etop1(Node) ->
+	case rpc:call(Node, sue_etop, collect, []) of
+		{badrpc,nodedown} -> [];
+		Any -> Any
+	end. 
 	
 sys_info1(Node) ->
 	case rpc:call(Node, observer_backend, sys_info, []) of
