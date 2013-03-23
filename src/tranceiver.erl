@@ -155,7 +155,10 @@ decode_message(false, _Node, _State, _Time, Ip) ->
 save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, Ip}]) ->
 	%%error_logger:info_msg("save : ~p in state : ~p ~n", [Node, State]),
 	%%gen_server:cast(node_repo, {save, [{node, Node}, {state, State}, {time, _Time}, {ip, Ip}]});
-	node_sup:start_child([Node, Ip]);
+	case node_sup:is_child(Node) of
+		false -> node_sup:start_child([Node, Ip]);
+		true -> node:set_alive(Node)
+	end;
 	
 save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
 	%%error_logger:info_msg("don't save node: ~p ,because it doesn't belong to the same cookie! ~n", [Node]),

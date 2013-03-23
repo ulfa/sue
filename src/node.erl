@@ -32,11 +32,16 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
 
--export([get_status/1, sys_info/1, etop/1, memory/1]).
+-export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1]).
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+set_alive(Node) when is_binary(Node)->
+	set_alive(binary_to_atom(Node, utf8));
+set_alive(Node) when is_atom(Node)->
+	gen_server:cast(Node, set_alive).
+	
 memory(Node) ->
 	memory1(Node).
 
@@ -77,7 +82,6 @@ start([Node, Ip]) ->
 %% --------------------------------------------------------------------
 init([Node, Ip]) ->
 	net_kernel:monitor_nodes(true, [nodedown_reason]),	
-	gen_server:cast(self(), {init_phase_2, Node}),
     {ok, #state{node = erlang:atom_to_binary(Node, latin1), ip = Ip, time = get_timestamp()}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -106,9 +110,8 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_cast({init_phase_2, Node}, State) ->
-	start_timer(Node),
-	{noreply, State#state{status=ping_node(Node), reason=[]}};
+handle_cast(set_alive, State) ->
+	{noreply, State#state{status=?ALIVE, reason=[]}};
 	
 handle_cast(Msg, State) ->
     {noreply, State}.
@@ -159,6 +162,7 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
+
 etop1(Node) ->
 	case rpc:call(Node, sue_etop, collect, []) of
 		{badrpc,nodedown} -> [];
