@@ -35,7 +35,7 @@ collect() ->
            memi = etop_memi(),
            procinfo = []
           },
-	{record_to_proplist(EtopInfo), recordlist_to_proplist(EtopProcInfo, [])}.
+	{record_to_proplist(EtopInfo), recordlist_to_proplist(lists:reverse(EtopProcInfo), [])}.
 
 etop_memi() ->
     try
@@ -55,20 +55,25 @@ etop_collect([P|Ps], Acc) when P =:= self() ->
 etop_collect([P|Ps], Acc) ->
     Fs = [registered_name,initial_call,memory,reductions,current_function,message_queue_len],
     case process_info(P, Fs) of
-  undefined ->
-      etop_collect(Ps, Acc);
+      undefined -> etop_collect(Ps, Acc);
   [{registered_name,Reg},{initial_call,Initial},{memory,Mem},
    {reductions,Reds},{current_function,Current},{message_queue_len,Qlen}] ->
       Name = case Reg of
            [] -> Initial;
            _ -> Reg
        end,
-      Info = #etop_proc_info{pid=P,mem=Mem,reds=Reds,name=Name,
-           cf=Current,mq=Qlen},
+      Info = #etop_proc_info{pid=pid_to_list(P) ,mem=Mem, reds=Reds, name=convert_name(Name), cf=cf_to_string(Current),mq=Qlen},
       etop_collect(Ps, [Info|Acc])
     end;
 etop_collect([], Acc) -> Acc.
 
+cf_to_string({M,F,A}) ->
+  lists:flatten(io_lib:fwrite("~s:~s/~p", [M, F, A])).
+
+convert_name(Value) when is_atom(Value) ->
+  Value;
+convert_name({M,F,A}) ->
+  "".
 recordlist_to_proplist([], Acc) ->
 	Acc;
 recordlist_to_proplist([H|T], Acc) ->
@@ -79,7 +84,6 @@ record_to_proplist(#etop_info{} = Rec) ->
   
 record_to_proplist(#etop_proc_info{} = Rec) ->
   lists:zip(record_info(fields, etop_proc_info), tl(tuple_to_list(Rec))).
-
 
 %% --------------------------------------------------------------------
 %%% Test functions
@@ -99,16 +103,16 @@ record_to_proplist_test() ->
                   {runtime,{0,0}},
                   {run_queue,0},
                   {alloc_areas,[]},
-				  {memi, [{total, 0},
-				  		 {processes, 0},
-						 {ets, 0},
-						 {atom, 0},
-						 {code, 0},
-     					 {binary, 0}]},
-				  {procinfo,[]}
-				  ], record_to_proplist(A)),
-	B = #etop_proc_info{},
-	?assertEqual([{pid,undefined},
+				          {memi, [{total, 0},
+				  		    {processes, 0},
+						      {ets, 0},
+						      {atom, 0},
+						      {code, 0},
+     					    {binary, 0}]},
+				          {procinfo,[]}],
+                  record_to_proplist(A)),
+  B = #etop_proc_info{pid="<0.1.0>"},  
+	?assertEqual([{pid,"<0.1.0>"},
 				 {mem,0},
 				 {reds,0},
 				 {name,undefined},
