@@ -102,8 +102,8 @@ handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
 	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
 
-handle_info(timeout, _State) ->
-	{ok, Sender} = gen_udp:open(0, ?SENDER_OPTIONS),	
+handle_info(timeout, State) ->	
+	{ok, Sender} = gen_udp:open(0, ?SENDER_OPTIONS),		
 	{ok, Receiver} = gen_udp:open(get_env(multi_port), ?RECEIVER_OPTIONS),	
 	start_timer(),
 	{noreply, #state{sender = Sender, receiver = Receiver}};

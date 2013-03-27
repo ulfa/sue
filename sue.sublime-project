@@ -3,6 +3,9 @@
 	[
 		{
 			"path": "src"
+		},
+		{
+			"path": "include"
 		}
 	]
 }

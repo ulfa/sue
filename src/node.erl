@@ -33,6 +33,7 @@
 -export([start_link/2, start/1]).
 
 -export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1]).
+-export([start_timer/1]). %%only for testing
 
 %% ====================================================================
 %% External functions
@@ -81,8 +82,8 @@ start([Node, Ip]) ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([Node, Ip]) ->
-	net_kernel:monitor_nodes(true, [nodedown_reason]),	
-    {ok, #state{node = erlang:atom_to_binary(Node, latin1), ip = Ip, time = get_timestamp()}}.
+	net_kernel:monitor_nodes(true, [nodedown_reason]),		
+    {ok, #state{node = erlang:atom_to_binary(Node, utf8), ip = Ip, time = get_timestamp()}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
@@ -93,7 +94,7 @@ init([Node, Ip]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) ->	
+handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) -> 	
     {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
 
 handle_call({etop, Node}, From, State) ->
@@ -111,7 +112,7 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast(set_alive, State) ->
-	{noreply, State#state{status=?ALIVE, reason=[]}};
+	{noreply, State#state{status=?ALIVE, time=get_timestamp(), reason=[]}};
 	
 handle_cast(Msg, State) ->
     {noreply, State}.
@@ -123,7 +124,8 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info({update, Node}, State) ->
-	start_timer(Node),
+	%%error_logger:info_msg("........ update : ~p~n", [Node]),
+	start_timer(Node),	
 	{noreply, State#state{status=ping_node(Node), reason=[]}};
 	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
@@ -138,7 +140,6 @@ handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
-
 
 handle_info(Info, State) ->
 	error_logger:info_msg(".....~p~n", [Info]),
@@ -179,10 +180,10 @@ memory1(Node) ->
 	rpc:call(Node, erlang, memory, []).
 	
 start_timer(Node) ->
-	erlang:send_after(5000, self(), {update, Node}).		
+	erlang:send_after(10000, whereis(Node), {update, Node}).		
 	
 ping_node(Node) when is_binary(Node) ->
-	ping_node(erlang:binary_to_atom(Node, latin1));
+	ping_node(erlang:binary_to_atom(Node, utf8));
 ping_node(Node)  ->
 	case net_adm:ping(Node) of
 		pang -> get_state(pang); 

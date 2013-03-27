@@ -22,7 +22,7 @@
 
 -include_lib("runtime_tools/include/observer_backend.hrl").
 %% Application callbacks
--export([collect/0]).
+-export([collect/0, process_info/1]).
 
 
 collect() ->
@@ -66,6 +66,30 @@ etop_collect([P|Ps], Acc) ->
       etop_collect(Ps, [Info|Acc])
     end;
 etop_collect([], Acc) -> Acc.
+
+process_info(Pid) ->
+  Info = erlang:process_info(Pid),
+  I1 = convert_info(current_function, Info),
+  I2 = convert_info(links, I1),
+  convert_info(group_leader, I2). 
+
+convert_info(current_function, List) ->
+  Value = proplists:get_value(current_function, List),
+  convert_info(current_function, cf_to_string(Value), List);
+
+convert_info(links, List) ->
+  Value = proplists:get_value(links, List),
+  convert_info(links, pid_link_to_string(Value), List);
+
+convert_info(group_leader, List) ->
+  Value = proplists:get_value(group_leader, List),
+  convert_info(group_leader, pid_to_list(Value), List).  
+
+convert_info(Key, Value, List) ->
+  lists:keyreplace(Key, 1, List, {Key, Value}).
+
+pid_link_to_string(Pids) ->
+  [pid_to_list(P)||P<-Pids].
 
 cf_to_string({M,F,A}) ->
   lists:flatten(io_lib:fwrite("~s:~s/~p", [M, F, A])).
