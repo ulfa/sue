@@ -32,7 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/2, start/1]).
 
--export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1]).
+-export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1, pid_info/2]).
 -export([start_timer/1]). %%only for testing
 
 %% ====================================================================
@@ -51,6 +51,9 @@ sys_info(Node) ->
 	
 etop(Node) when is_atom(Node)->
 	gen_server:call(Node, {etop, Node}).
+
+pid_info(Node, Pid) when is_atom(Node)->
+	gen_server:call(Node, {pid_info, Node, Pid}).
 	
 get_status(Node) when is_pid(Node)->
 	gen_server:call(Node, get_state);
@@ -100,7 +103,10 @@ handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node 
 handle_call({etop, Node}, From, State) ->
 	Reply = etop1(Node),
 	{reply, Reply, State};
-	
+
+handle_call({pid_info, Node, Pid}, From, State) ->
+	Reply = pid_info1(Node, Pid),
+	{reply, Reply, State};	
 handle_call(Request, From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -169,7 +175,13 @@ etop1(Node) ->
 		{badrpc,nodedown} -> [];
 		Any -> Any
 	end. 
-	
+
+pid_info1(Node, Pid) ->
+	case rpc:call(Node, sue_etop, pid_info, [Pid]) of
+		{badrpc,nodedown} -> [];
+		Any -> Any
+	end. 
+
 sys_info1(Node) ->
 	case rpc:call(Node, observer_backend, sys_info, []) of
 		{badrpc,nodedown} -> [];
