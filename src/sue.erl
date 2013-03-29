@@ -52,4 +52,4 @@
 	get_applications(Node) when is_atom(Node)->
 		process_info:start(),
 		Apps = process_info:get_applications(Node),
-		[{Node, null}|[{X, Node} || X <- Apps]].
+		[{Node, ''}|[{X, Node} || X <- Apps]].

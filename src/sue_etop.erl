@@ -94,7 +94,13 @@ convert_info(Key, Value, List) ->
   lists:keyreplace(Key, 1, List, {Key, Value}).
 
 pid_link_to_string(Pids) ->
-  [pid_to_list(P)||P<-Pids].
+  [to_list(P)||P<-Pids].
+
+to_list(Pid) when is_pid(Pid) ->
+  erlang:pid_to_list(Pid);
+to_list(Port) when is_port(Port) ->
+  erlang:port_to_list(Port).
+  
 
 cf_to_string({M,F,A}) ->
   lists:flatten(io_lib:fwrite("~s:~s/~p", [M, F, A])).
