@@ -86,6 +86,7 @@ start([Node, Ip]) ->
 %% --------------------------------------------------------------------
 init([Node, Ip]) ->
 	net_kernel:monitor_nodes(true, [nodedown_reason]),		
+	start_timer(Node),
     {ok, #state{node = erlang:atom_to_binary(Node, utf8), ip = Ip, time = get_timestamp()}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -129,10 +130,14 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info({update, Node}, State) ->
+handle_info({update, Node}, #state{status=Old_s}=State) ->
 	%%error_logger:info_msg("........ update : ~p~n", [Node]),
-	start_timer(Node),	
-	{noreply, State#state{status=ping_node(Node), reason=[]}};
+	New_s = ping_node(Node),
+	start_timer(Node),
+	case New_s =:= Old_s of 
+		true -> {noreply, State};
+		false -> {noreply, State#state{status=New_s, time=get_timestamp(), reason=[]}}
+	end;
 	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
 	error_logger:info_msg("........ nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
