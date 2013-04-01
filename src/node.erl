@@ -33,11 +33,14 @@
 -export([start_link/2, start/1]).
 
 -export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1, pid_info/2]).
--export([start_timer/1]). %%only for testing
+-export([get_applications/1]). 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+get_applications(Node) ->
+	gen_server:call(Node, {applications, Node}).
+
 set_alive(Node) when is_binary(Node)->
 	set_alive(binary_to_atom(Node, utf8));
 set_alive(Node) when is_atom(Node)->
@@ -100,6 +103,10 @@ init([Node, Ip]) ->
 %% --------------------------------------------------------------------
 handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) -> 	
     {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
+
+handle_call({applications, Node}, From, State) ->
+	Reply = get_applications1(Node),
+	{reply, Reply, State};
 
 handle_call({etop, Node}, From, State) ->
 	Reply = etop1(Node),
@@ -174,6 +181,10 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
+get_applications1(Node) ->
+	process_info:start(),
+	Apps = process_info:get_applications(Node),
+	[{Node, ''}|[{X, Node} || X <- Apps]].
 
 etop1(Node) ->
 	case rpc:call(Node, sue_etop, collect, []) of
