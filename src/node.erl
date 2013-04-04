@@ -33,11 +33,14 @@
 -export([start_link/2, start/1]).
 
 -export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1, pid_info/2]).
--export([get_applications/1]). 
+-export([get_applications/1, get_app_info/2]). 
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+get_app_info(Node, App) ->
+	gen_server:call(Node, {app_info, Node, App}).
+
 get_applications(Node) ->
 	gen_server:call(Node, {applications, Node}).
 
@@ -103,6 +106,10 @@ init([Node, Ip]) ->
 %% --------------------------------------------------------------------
 handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) -> 	
     {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
+
+handle_call({app_info, Node, App}, From, State) ->
+	Reply = get_app_info1(Node, App),
+	{reply, Reply, State};
 
 handle_call({applications, Node}, From, State) ->
 	Reply = get_applications1(Node),
@@ -181,6 +188,12 @@ code_change(OldVsn, State, Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------	
+get_app_info1(Node, App) ->
+	process_info:start(),
+	Processes = process_info:get_processes(App, all, Node),
+	io:format("~p~n", [Processes]),
+	convert_children(Processes).
+
 get_applications1(Node) ->
 	process_info:start(),
 	Apps = process_info:get_applications(Node),
@@ -226,11 +239,42 @@ get_state(pong) ->
 get_timestamp() ->
     date:get_timestamp().
 
+
+convert_children(unknown) ->
+	[];
+convert_children({{Parent, Children, []}, Num}) ->
+	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])].
+
+convert_children({Parent, [], []}, Acc) ->
+	Acc;
+
+convert_children({Parent, [{Name, Children, []}|T], []}, Acc) ->		
+	List = convert_children({Name, Children, []}, []),	
+	Acc1 = lists:append(List, Acc), 
+	convert_children({Parent, T, []}, [[get_name(Name),get_name(Parent)]|Acc1]).
+
+get_name(Name_pid) ->
+	Name = lists:nth(1,string:tokens(Name_pid, ":")),
+	string:strip(Name, both).
 %% --------------------------------------------------------------------
 %%% Test functions
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+convert_app_info_test() ->
+A={{"<0.77.0>",
+  [{"tranceiver_sup : <0.80.0>",
+    [{"sue_sup : <0.79.0>", [{"node_sup : <0.82.0>",[{"sue@kiezkantine : <0.129.0>",[],[]},{"moni@ua-TA880GB : <0.142.0>",[],[]}],[]}, {"<0.78.0>",[],[]}],[]},
+     {"tranceiver : <0.81.0>", [{"Port :#Port<0.2339>",[],[]},{"Port :#Port<0.2325>",[],[]}],[]}],[]}
+  ],[]},
+ 53277}.
+
+
+ convert_children_test() ->
+ 	A= {{"<0.77.0>", [{"tranceiver_sup : <0.80.0>",  [{"sue_sup : <0.79.0>",  [{"node_sup : <0.82.0>",[{"sue@kiezkantine : <0.129.0>",[],[]},
+ 																{"moni@ua-TA880GB : <0.142.0>",[],[]}],[]}, {"<0.78.0>",[],[]}],[]}], []}],[]},53277},
+ 	?assertEqual([["<0.77.0>",''],["tranceiver_sup","<0.77.0>"],["sue_sup", "tranceiver_sup"], ["<0.78.0>","sue_sup"], ["node_sup", "sue_sup"], ["moni@ua-TA880GB", "node_sup"], ["sue@kiezkantine", "node_sup"]], convert_children(A)).
+
 -endif.
 
 
