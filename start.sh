@@ -1,3 +1,3 @@
 #!/bin/sh
 mkdir -p log/sasl
-erl -sname sue -setcookie nocookie -pa $PWD/ebin $PWD/deps/*/ebin -boot start_sasl -s sue -s erlbuild -s toolbar
+erl -sname sue -setcookie nocookie -pa $PWD/ebin $PWD/deps/*/ebin -boot start_sasl -s lager -s sue -s erlbuild -s toolbar 
