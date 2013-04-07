@@ -122,6 +122,8 @@ handle_call({etop, Node}, From, State) ->
 handle_call({pid_info, Node, Pid}, From, State) ->
 	Reply = pid_info1(Node, Pid),
 	{reply, Reply, State};	
+handle_call(get_name, From, #state{node = Node} = State) ->
+    {reply, Node, State};
 handle_call(Request, From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -154,13 +156,13 @@ handle_info({update, Node}, #state{status=Old_s}=State) ->
 	end;
 	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
-	error_logger:info_msg("........ nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	error_logger:info_msg("nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
 		true -> {noreply, State#state{status=?ALIVE, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
-	error_logger:info_msg(".........nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	error_logger:info_msg("nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
 		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
@@ -242,6 +244,8 @@ get_timestamp() ->
 
 convert_children(unknown) ->
 	[];
+convert_children({{Parent, Children, []}, Num}) ->	
+	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])];
 convert_children({{Parent, Children, []}, Num}) ->
 	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])].
 
@@ -275,6 +279,27 @@ A={{"<0.77.0>",
  																{"moni@ua-TA880GB : <0.142.0>",[],[]}],[]}, {"<0.78.0>",[],[]}],[]}], []}],[]},53277},
  	?assertEqual([["<0.77.0>",''],["tranceiver_sup","<0.77.0>"],["sue_sup", "tranceiver_sup"], ["<0.78.0>","sue_sup"], ["node_sup", "sue_sup"], ["moni@ua-TA880GB", "node_sup"], ["sue@kiezkantine", "node_sup"]], convert_children(A)).
 
+convert_lager_test() ->
+	A=[{"<0.47.0>",
+          [{"lager_event : <0.52.0>",
+                      [{"lager_sup : <0.49.0>",
+                        [{"lager_handler_watcher_sup : <0.53.0>",
+                          [{"<0.55.0>",[],[]},
+                           {"<0.57.0>",[],[]},
+                           {"<0.58.0>",[],[]},
+                           {"<0.56.0>",[],[]}],
+                          []},
+                         {"lager_crash_log : <0.54.0>",
+                          [{"Port :#Port<0.1538>",[],[]}],
+                          []},
+                         {"<0.48.0>",[],[]}],
+                        []},
+                       {"Port :#Port<0.1575>",[],[]},
+                       {"Port :#Port<0.1574>",[],[]}],
+                      ["<0.55.0>","<0.56.0>","<0.57.0>"]}],
+                    []},
+                   []],
+     ?assertEqual([], convert_children(A)).
 -endif.
 
 

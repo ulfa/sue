@@ -22,7 +22,7 @@
 
 %% Application callbacks
 -export([start/0, stop/0]).
--export([get_children/0, add_node/1, sys_info/1, etop/1, memory/1]).
+-export([get_children/0, get_children/1, add_node/1, sys_info/1, etop/1, memory/1]).
 -export([get_applications/1, process_info/2, app_info/2]).
 
 	start() ->		
@@ -33,6 +33,12 @@
 
 	get_children() ->
 		node_sup:get_children().
+
+	get_children(Node) ->
+		case rpc:call(Node, node_sup, get_children, []) of
+			{badrpc,nodedown} -> [];
+			Any -> Any
+		end.
 		
 	add_node(Node) when is_atom(Node) ->
 		node_sup:start_child([Node, {0,0,0,0}]).
