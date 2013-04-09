@@ -244,15 +244,22 @@ get_timestamp() ->
 
 convert_children(unknown) ->
 	[];
+
+convert_children([{Parent, Children, []}, Num]) ->
+	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])];
+
 convert_children({{Parent, Children, []}, Num}) ->	
 	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])];
 convert_children({{Parent, Children, []}, Num}) ->
 	[[get_name(Parent), '']|convert_children({Parent, Children, []}, [])].
 
+convert_children({Parent, [], []}, Acc) ->	
+	Acc;
+
 convert_children({Parent, [], []}, Acc) ->
 	Acc;
 
-convert_children({Parent, [{Name, Children, []}|T], []}, Acc) ->		
+convert_children({Parent, [{Name, Children, Ignore}|T], []}, Acc) ->		
 	List = convert_children({Name, Children, []}, []),	
 	Acc1 = lists:append(List, Acc), 
 	convert_children({Parent, T, []}, [[get_name(Name),get_name(Parent)]|Acc1]).
@@ -285,8 +292,6 @@ convert_lager_test() ->
                       [{"lager_sup : <0.49.0>",
                         [{"lager_handler_watcher_sup : <0.53.0>",
                           [{"<0.55.0>",[],[]},
-                           {"<0.57.0>",[],[]},
-                           {"<0.58.0>",[],[]},
                            {"<0.56.0>",[],[]}],
                           []},
                          {"lager_crash_log : <0.54.0>",
