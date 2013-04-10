@@ -112,7 +112,7 @@ handle_call({app_info, Node, App}, From, State) ->
 	{reply, Reply, State};
 
 handle_call({applications, Node}, From, State) ->
-	Reply = get_applications1(Node),
+	Reply = get_applications2(Node, application:loaded_applications()),
 	{reply, Reply, State};
 
 handle_call({etop, Node}, From, State) ->
@@ -201,6 +201,9 @@ get_applications1(Node) ->
 	Apps = process_info:get_applications(Node),
 	[{Node, ''}|[{X, Node} || X <- Apps]].
 
+get_applications2(Node, Apps) ->
+	[{Node,[], [], ''}|[{App, Version, Tool, Node} || {App, Tool, Version} <- Apps]].	
+
 etop1(Node) ->
 	case rpc:call(Node, sue_etop, collect, []) of
 		{badrpc,nodedown} -> [];
@@ -272,6 +275,21 @@ get_name(Name_pid) ->
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+
+get_applications1_test() ->
+A =[{mnesia,"MNESIA  CXC 138 12","4.7.1"},
+	{mimetypes,"mimetypes","0.9-5-geaf7c84"},
+	{sue,[],"0.1.0"},
+	{kernel,"ERTS  CXC 138 10","2.15.3"},
+	{crypto,"CRYPTO version 2","2.2"},
+	{erlcron,"Erlang Implementation of cron","0.3.0"},
+	{sasl,"SASL  CXC 138 11","2.2.1"},
+	{boss,"Chicago Boss web framework, now serving three flavors of Comet", "0.8.0"},
+ 	{stdlib,"ERTS  CXC 138 10","1.18.3"},
+ 	{tinymq,"TinyMQ: a diminutive message queue","0.1.0"}],
+
+?assertEqual([], get_applications2('sue', A)).
+	
 convert_app_info_test() ->
 A={{"<0.77.0>",
   [{"tranceiver_sup : <0.80.0>",
