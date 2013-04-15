@@ -147,7 +147,7 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info({update, Node}, #state{status=Old_s}=State) ->
-	%%error_logger:info_msg("........ update : ~p~n", [Node]),
+	%%lager:debug("update node : ~p from state : ~p ", [Node, Old_s]),
 	New_s = ping_node(Node),
 	start_timer(Node),
 	case New_s =:= Old_s of 
@@ -156,20 +156,20 @@ handle_info({update, Node}, #state{status=Old_s}=State) ->
 	end;
 	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
-	error_logger:info_msg("nodeup : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	lager:debug("nodeup : ~p ~p", [Node, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
 		true -> {noreply, State#state{status=?ALIVE, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
-	error_logger:info_msg("nodedown : ~p, ~p ~p ~n", [Node, Node1, InfoList]),
+	lager:debug("nodedown : ~p, ~p", [Node, InfoList]),
 	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
 		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 
 handle_info(Info, State) ->
-	error_logger:info_msg(".....~p~n", [Info]),
+	lager:warning("got a message i can't handle info: ~p in state : ~p", [Info, State]),
     {noreply, State}.
 %% --------------------------------------------------------------------
 %% Function: terminate/2
@@ -193,13 +193,7 @@ code_change(OldVsn, State, Extra) ->
 get_app_info1(Node, App) ->
 	process_info:start(),
 	Processes = process_info:get_processes(App, all, Node),
-	io:format("~p~n", [Processes]),
 	convert_children(Processes).
-
-get_applications1(Node) ->
-	process_info:start(),
-	Apps = process_info:get_applications(Node),
-	[{Node, ''}|[{X, Node} || X <- Apps]].
 
 get_applications2(Node, Apps) ->
 	[{Node,[], [], ''}|[{App, Version, Tool, Node} || {App, Tool, Version} <- Apps]].	
