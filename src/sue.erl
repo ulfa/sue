@@ -25,7 +25,8 @@
 -export([get_children/0, get_children/1, add_node/1, sys_info/1, etop/1, memory/1]).
 -export([get_applications/1, process_info/2, app_info/2]).
 
-	start() ->		
+	start() ->
+		application:start(lager),		
 	  application:start(?MODULE).
 
 	stop() ->
