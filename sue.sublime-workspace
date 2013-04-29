@@ -3,18 +3,51 @@
 	{
 		"selected_items":
 		[
+			[
+				"lo",
+				"loaded_applications/0"
+			],
+			[
+				"get_app",
+				"get_applications1"
+			],
+			[
+				"a",
+				"append/2"
+			],
+			[
+				"erro",
+				"error_logger"
+			],
+			[
+				"get",
+				"get_value/2"
+			],
+			[
+				"pr",
+				"process_info/1"
+			],
+			[
+				"list_",
+				"list_to_pid/1"
+			]
 		]
 	},
 	"buffers":
 	[
 		{
-			"contents": "%% Copyright 2010 Ulf Angermann\n%%\n%% Licensed under the Apache License, Version 2.0 (the \"License\");\n%% you may not use this file except in compliance with the License.\n%% You may obtain a copy of the License at\n%% \n%%     http://www.apache.org/licenses/LICENSE-2.0\n%% \n%% Unless required by applicable law or agreed to in writing, software\n%% distributed under the License is distributed on an \"AS IS\" BASIS,\n%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n%% See the License for the specific language governing permissions and\n%% limitations under the License.\n\n%%% -------------------------------------------------------------------\n%%% Author  : Ulf Angermann uaforum1@googlemail.com\n%%% Description :\n%%%\n%%% Created : \n%%% -------------------------------------------------------------------\n-module(node).\n\n-behaviour(gen_server).\n%% --------------------------------------------------------------------\n%% Include files\n%% --------------------------------------------------------------------\n-include(\"../include/sue.hrl\").\n-include_lib(\"runtime_tools/include/observer_backend.hrl\").\n%% --------------------------------------------------------------------\n%% External exports\n%% gen_server callbacks\n-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).\n-export([start_link/2, start/1]).\n\n-export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1]).\n\n%% ====================================================================\n%% External functions\n%% ====================================================================\nset_alive(Node) when is_binary(Node)->\n	set_alive(binary_to_atom(Node, utf8));\nset_alive(Node) when is_atom(Node)->\n	gen_server:cast(Node, set_alive).\n	\nmemory(Node) ->\n	memory1(Node).\n\nsys_info(Node) ->\n	sys_info1(Node).	\n	\netop(Node) when is_atom(Node)->\n	gen_server:call(Node, {etop, Node}).\n	\nget_status(Node) when is_pid(Node)->\n	gen_server:call(Node, get_state);\n	\nget_status(Node) when is_atom(Node)->\n	gen_server:call(Node, get_state).\n%% --------------------------------------------------------------------\n%% record definitions\n%% --------------------------------------------------------------------\n-record(state, {status = ?UNKNOWN, node, time, ip, reason=[]}).\n%% ====================================================================\n%% Server functions\n%% ====================================================================\n%%--------------------------------------------------------------------\n%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}\n%% Description: Starts the server\n%%--------------------------------------------------------------------\nstart_link(Node, Ip) ->\n    gen_server:start_link({local, Node}, ?MODULE, [Node, Ip], []).\n	\nstart([Node, Ip]) ->\n	start_link(Node, Ip).	\n%% --------------------------------------------------------------------\n%% Function: init/1\n%% Description: Initiates the server\n%% Returns: {ok, State}          |\n%%          {ok, State, Timeout} |\n%%          ignore               |\n%%          {stop, Reason}\n%% --------------------------------------------------------------------\ninit([Node, Ip]) ->\n	net_kernel:monitor_nodes(true, [nodedown_reason]),	\n    {ok, #state{node = erlang:atom_to_binary(Node, latin1), ip = Ip, time = get_timestamp()}}.\n%% --------------------------------------------------------------------\n%% Function: handle_call/3\n%% Description: Handling call messages\n%% Returns: {reply, Reply, State}          |\n%%          {reply, Reply, State, Timeout} |\n%%          {noreply, State}               |\n%%          {noreply, State, Timeout}      |\n%%          {stop, Reason, Reply, State}   | (terminate/2 is called)\n%%          {stop, Reason, State}            (terminate/2 is called)\n%% --------------------------------------------------------------------\nhandle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) ->	\n    {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};\n\nhandle_call({etop, Node}, From, State) ->\n	Reply = etop1(Node),\n	{reply, Reply, State};\n	\nhandle_call(Request, From, State) ->\n    Reply = ok,\n    {reply, Reply, State}.\n%% --------------------------------------------------------------------\n%% Function: handle_cast/2\n%% Description: Handling cast messages\n%% Returns: {noreply, State}          |\n%%          {noreply, State, Timeout} |\n%%          {stop, Reason, State}            (terminate/2 is called)\n%% --------------------------------------------------------------------\nhandle_cast(set_alive, State) ->\n	{noreply, State#state{status=?ALIVE, reason=[]}};\n	\nhandle_cast(Msg, State) ->\n    {noreply, State}.\n%% --------------------------------------------------------------------\n%% Function: handle_info/2\n%% Description: Handling all non call/cast messages\n%% Returns: {noreply, State}          |\n%%          {noreply, State, Timeout} |\n%%          {stop, Reason, State}            (terminate/2 is called)\n%% --------------------------------------------------------------------\nhandle_info({update, Node}, State) ->\n	start_timer(Node),\n	{noreply, State#state{status=ping_node(Node), reason=[]}};\n	\nhandle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->\n	error_logger:info_msg(\"........ nodeup : ~p, ~p ~p ~n\", [Node, Node1, InfoList]),\n	case erlang:atom_to_binary(Node, latin1) =:= Node1 of\n		true -> {noreply, State#state{status=?ALIVE, reason=InfoList, time=get_timestamp()}};\n		false -> {noreply, State}\n	end;\nhandle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->\n	error_logger:info_msg(\".........nodedown : ~p, ~p ~p ~n\", [Node, Node1, InfoList]),\n	case erlang:atom_to_binary(Node, latin1) =:= Node1 of\n		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};\n		false -> {noreply, State}\n	end;\n\n\nhandle_info(Info, State) ->\n	error_logger:info_msg(\".....~p~n\", [Info]),\n    {noreply, State}.\n%% --------------------------------------------------------------------\n%% Function: terminate/2\n%% Description: Shutdown the server\n%% Returns: any (ignored by gen_server)\n%% --------------------------------------------------------------------\nterminate(Reason, State) ->\n    ok.\n\n%% --------------------------------------------------------------------\n%% Func: code_change/3\n%% Purpose: Convert process state when code is changed\n%% Returns: {ok, NewState}\n%% --------------------------------------------------------------------\ncode_change(OldVsn, State, Extra) ->\n    {ok, State}.\n\n%% --------------------------------------------------------------------\n%%% Internal functions\n%% --------------------------------------------------------------------	\n\netop1(Node) ->\n	case rpc:call(Node, sue_etop, collect, []) of\n		{badrpc,nodedown} -> [];\n		Any -> Any\n	end. \n	\nsys_info1(Node) ->\n	case rpc:call(Node, observer_backend, sys_info, []) of\n		{badrpc,nodedown} -> [];\n		Any -> Any\n	end. \n	\nmemory1(Node) ->\n	rpc:call(Node, erlang, memory, []).\n	\nstart_timer(Node) ->\n	erlang:send_after(5000, self(), {update, Node}).		\n	\nping_node(Node) when is_binary(Node) ->\n	ping_node(erlang:binary_to_atom(Node, latin1));\nping_node(Node)  ->\n	case net_adm:ping(Node) of\n		pang -> get_state(pang); \n		pong -> get_state(pong)\n	end.\n	\nget_state(pang) ->\n	?DEAD;\nget_state(pong) ->\n	?ALIVE.\n\nget_timestamp() ->\n    date:get_timestamp().\n\n%% --------------------------------------------------------------------\n%%% Test functions\n%% --------------------------------------------------------------------\n-include_lib(\"eunit/include/eunit.hrl\").\n-ifdef(TEST).\n-endif.\n\n\n",
 			"file": "src/node.erl",
-			"file_size": 7665,
-			"file_write_time": 1364233160000000,
 			"settings":
 			{
-				"buffer_size": 7665,
+				"buffer_size": 12044,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "src/sue.app.src",
+			"settings":
+			{
+				"buffer_size": 641,
 				"line_ending": "Unix"
 			}
 		}
@@ -43,13 +76,25 @@
 	},
 	"file_history":
 	[
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/deps/lager/src/lager.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue.app.src",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/node.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/rebar.config",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue_etop.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/tranceiver.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/node_sup.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/include/sue.hrl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/tranceiver.erl~",
+		"/usr/local/lib/erlang/lib/runtime_tools-1.8.9/include/observer_backend.hrl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/deps/webmachine/src/wrq.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/deps/erlydtl/src/i18n/blocktrans_extractor.erl",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/sue.sublime-project",
 		"/Users/ulfangermann/Dropbox/projects/erlang/erlbuild/src/cc_compiler.erl"
 	],
 	"find":
 	{
-		"height": 0.0
+		"height": 35.0
 	},
 	"find_in_files":
 	{
@@ -63,6 +108,8 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"save",
+			"get_state"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -88,24 +135,51 @@
 					"file": "src/node.erl",
 					"settings":
 					{
-						"buffer_size": 7665,
+						"buffer_size": 12044,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								4096,
-								4096
+								6370,
+								6370
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Erlang/Erlang.tmLanguage",
-							"translate_tabs_to_spaces": false
+							"syntax": "Packages/Erlang/Erlang.tmLanguage"
 						},
 						"translation.x": 0.0,
-						"translation.y": 1810.0,
+						"translation.y": 1857.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "src/sue.app.src",
+					"settings":
+					{
+						"buffer_size": 641,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								476,
+								476
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"type": "text"
@@ -150,11 +224,15 @@
 	},
 	"output.sublimerl_autocompiler":
 	{
-		"height": 0.0
+		"height": 204.0
+	},
+	"output.sublimerl_man":
+	{
+		"height": 174.0
 	},
 	"output.sublimerl_tests":
 	{
-		"height": 94.0
+		"height": 116.0
 	},
 	"replace":
 	{
@@ -171,11 +249,11 @@
 	},
 	"select_project":
 	{
-		"height": 0.0,
+		"height": 500.0,
 		"selected_items":
 		[
 		],
-		"width": 0.0
+		"width": 380.0
 	},
 	"show_minimap": true,
 	"show_open_files": false,
