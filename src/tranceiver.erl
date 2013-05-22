@@ -97,7 +97,7 @@ handle_cast(_Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info({udp, Socket, Ip, InPortNo, Packet}, State) ->
-	lager:debug("~pFrom IP: ~pPort: ~pData: ~p", [Ip, InPortNo, Packet]),
+	%%lager:debug("~pFrom IP: ~pPort: ~pData: ~p", [Ip, InPortNo, Packet]),
 	Node = decode_message(Packet),
 	save_node(lists:append(Node,[{ip, Ip}])),	
 	{noreply, State};
@@ -110,14 +110,14 @@ handle_info(timeout, State) ->
 	
 handle_info(send_alive, State=#state{sender = Socket}) ->
 	{ok, {Address, Port}} = inet:sockname(Socket),
-	lager:debug("1... IP : ~p  Port : ~p", [Address, Port]),
+	%%lager:debug("1... IP : ~p  Port : ~p", [Address, Port]),
 	ok = gen_udp:send(Socket, get_env(multi_ip),  get_env(multi_port), get_search()),
 	start_timer(),		
 	{noreply, State};
 		  
 
 handle_info(Info, State) ->
-	lager:warning("don't understand this message : ~p", [Info]),	
+	%%lager:warning("don't understand this message : ~p", [Info]),	
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -153,14 +153,14 @@ decode_message(false, _Node, _State, _Time, Ip) ->
 	ok.
 	
 save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, Ip}]) ->
-	lager:info("save : ~p in state : ~p", [Node, State]),
+	%%lager:info("save : ~p in state : ~p", [Node, State]),
 	case node_sup:is_child(Node) of
 		false -> node_sup:start_child([Node, Ip]);
 		true -> node:set_alive(Node)
 	end;
 	
 save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
-	lager:info("don't save node: ~p ,because it doesn't belong to the correct cookie!", [Node]),
+	%%lager:info("don't save node: ~p ,because it doesn't belong to the correct cookie!", [Node]),
 	ok.
 		
 start_timer() ->

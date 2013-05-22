@@ -36,18 +36,18 @@
 	"buffers":
 	[
 		{
-			"file": "src/node.erl",
+			"file": "src/tranceiver.erl",
 			"settings":
 			{
-				"buffer_size": 12044,
+				"buffer_size": 8042,
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "src/sue.app.src",
+			"file": "README.md",
 			"settings":
 			{
-				"buffer_size": 641,
+				"buffer_size": 43,
 				"line_ending": "Unix"
 			}
 		}
@@ -55,11 +55,19 @@
 	"build_system": "Packages/Erlang/Erlang.sublime-build",
 	"command_palette":
 	{
-		"height": 392.0,
+		"height": 375.0,
 		"selected_items":
 		[
+			[
+				"ma",
+				"Markdown Preview: preview in Browser"
+			],
+			[
+				"Package Control: in",
+				"Package Control: Install Package"
+			]
 		],
-		"width": 392.0
+		"width": 561.0
 	},
 	"console":
 	{
@@ -76,10 +84,10 @@
 	},
 	"file_history":
 	[
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/node.erl",
+		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue.app.src",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/deps/lager/src/lager.erl",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue.erl",
-		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue.app.src",
-		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/node.erl",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/rebar.config",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/sue_etop.erl",
 		"/Users/ulfangermann/Dropbox/projects/erlang/sue/src/tranceiver.erl",
@@ -132,51 +140,50 @@
 			[
 				{
 					"buffer": 0,
-					"file": "src/node.erl",
+					"file": "src/tranceiver.erl",
 					"settings":
 					{
-						"buffer_size": 12044,
+						"buffer_size": 8042,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								6370,
-								6370
+								6508,
+								6508
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Erlang/Erlang.tmLanguage"
+							"syntax": "Packages/Erlang/Erlang.tmLanguage",
+							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 1857.0,
+						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"type": "text"
 				},
 				{
 					"buffer": 1,
-					"file": "src/sue.app.src",
+					"file": "README.md",
 					"settings":
 					{
-						"buffer_size": 641,
+						"buffer_size": 43,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								476,
-								476
+								28,
+								28
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Text/Plain text.tmLanguage",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
+							"syntax": "Packages/Markdown/Markdown.tmLanguage"
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
@@ -259,6 +266,6 @@
 	"show_open_files": false,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 150.0,
+	"side_bar_width": 196.0,
 	"status_bar_visible": true
 }
