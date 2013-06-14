@@ -2,11 +2,22 @@ PROJECT = sue
 DIALYZER = dialyzer
 REBAR = rebar
 REPO = ../../../repository
+REPOSRC = ../repository
 
 all: app
 
-tar: 
-	cd rel; tar cvf $(REPO)/$(PROJECT).$(filter-out $@,$(MAKECMDGOALS)).tar $(PROJECT)
+tar: app 
+	cd rel; tar cvf $(REPO)/$(PROJECT).$(VERSION).tar $(PROJECT)
+
+tarall: app 
+	cd ..; tar cvf $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(PROJECT)
+
+cpall: tarall
+	cd ..;scp $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(USR)@$(HOST):~/projects/erlang
+
+cp: tar
+	 cd ..;scp $(REPOSRC)/$(PROJECT).$(VERSION).tar $(USR)@$(HOST):~/projects/erlang
+
 release: app
 	@$(REBAR) generate
 
