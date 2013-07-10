@@ -30,12 +30,12 @@
 %% doc starrt the application
 %%
 	start() ->
-		application:start(lager),		
+		%%application:start(lager),		
 	  	application:start(?MODULE).
 
 %% doc stop the application
 	stop() ->
-		application:stop(lager),		
+		%%application:stop(lager),		
 		application:stop(?MODULE).
 
 %% doc Return all registered children. 

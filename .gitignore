@@ -1,6 +1,6 @@
 erl_crash.dump
 log/*
-apps/sue/ebin/*
+ebin/*
 .eunit/
 rel/sue/*
 deps
