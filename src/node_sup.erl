@@ -35,11 +35,11 @@
 start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_child([Node, Ip]) when is_binary(Node) ->
-	start_child([erlang:binary_to_atom(Node, latin1), Ip]);
+start_child([Node, Ip, Uptime]) when is_binary(Node) ->
+	start_child([erlang:binary_to_atom(Node, latin1), Ip, Uptime]);
 
-start_child([Node, Ip]) ->
-	supervisor:start_child(?MODULE, [Node, Ip]).
+start_child([Node, Ip, Uptime]) ->
+	supervisor:start_child(?MODULE, [Node, Ip, Uptime]).
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================

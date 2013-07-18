@@ -26,6 +26,7 @@
 -export([start/0, stop/0]).
 -export([get_children/0, get_children/1, add_node/1, sys_info/1, etop/1, memory/1]).
 -export([get_applications/1, process_info/2, app_info/2]).
+-export([set_debug/0, set_info/0]).
 
 %% doc starrt the application
 %%
@@ -77,3 +78,9 @@
 	app_info(Node, App) ->
 		process_info:start(),
 		[].
+
+set_debug() ->
+	lager:set_loglevel(lager_console_backend, debug).
+
+set_info() ->
+	lager:set_loglevel(lager_console_backend, info).	

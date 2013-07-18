@@ -110,7 +110,7 @@ handle_info(timeout, State) ->
 	
 handle_info(send_alive, State=#state{sender = Socket}) ->
 	{ok, {Address, Port}} = inet:sockname(Socket),
-	%%lager:debug("1... IP : ~p  Port : ~p", [Address, Port]),
+	lager:debug("IP : ~p  Port : ~p", [Address, Port]),
 	ok = gen_udp:send(Socket, get_env(multi_ip),  get_env(multi_port), get_search()),
 	start_timer(),		
 	{noreply, State};
@@ -145,29 +145,30 @@ code_change(_OldVsn, State, _Extra) ->
 decode_message(<<_Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->	
 	Is_valid_cookie = decode_cookie(Cookie, get_local_cookie()),
 	[Node, R1] = binary:split(Rest,<<":">>),
-	[State, Time] = binary:split(R1,<<":">>),
-	[{valid, Is_valid_cookie},{node, Node}, {state, State}, {time, Time}].
+	[State, R2] = binary:split(R1,<<":">>),
+	[Time, Uptime] = binary:split(R2,<<":">>),
+	[{valid, Is_valid_cookie},{node, Node}, {state, State}, {time, Time}, {uptime, Uptime}].
 	
 decode_message(false, _Node, _State, _Time, Ip) ->	
 	error_logger:info_msg("Cookie which was received is not a requested one~n"),
 	ok.
 	
-save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time}, {ip, Ip}]) ->
-	%%lager:info("save : ~p in state : ~p", [Node, State]),
+save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time},{uptime, Uptime}, {ip, Ip}]) ->
+	lager:debug("save : ~p in state : ~p", [Node, State, Uptime]),
 	case node_sup:is_child(Node) of
-		false -> node_sup:start_child([Node, Ip]);
+		false -> node_sup:start_child([Node, Ip, Uptime]);
 		true -> node:set_alive(Node)
 	end;
 	
-save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {ip, _Ip}]) ->
-	%%lager:info("don't save node: ~p ,because it doesn't belong to the correct cookie!", [Node]),
+save_node([{valid, false}, {node, Node}, {state, State}, {time, _Time}, {uptime, Uptime}, {ip, _Ip}]) ->
+	lager:debug("don't save node: ~p ,because it doesn't belong to the correct cookie!", [Node]),
 	ok.
 		
 start_timer() ->
 	erlang:send_after(get_env(timer), self(), send_alive).
 
 get_search() ->
-	erlang:list_to_binary([<<"SEARCH:">>, get_cookie(), get_node(), <<":">>, get_state(), <<":">>, get_timestamp()]).
+	erlang:list_to_binary([<<"SEARCH:">>, get_cookie(), get_node(), <<":">>, get_state(), <<":">>, get_timestamp(), <<":">>, get_uptime()]).
 	
 get_local_cookie() ->
 	atom_to_list(erlang:get_cookie()).
@@ -183,7 +184,11 @@ get_state() ->
 
 get_timestamp() ->
 	date:get_timestamp().
-	
+
+get_uptime() ->
+	{Uptime, _Rest} = erlang:statistics(wall_clock),
+	list_to_binary(integer_to_list(Uptime)).
+
 encode_cookie(Cookie) ->
 	crypto:md5_mac(Cookie, Cookie).
 		
@@ -202,7 +207,7 @@ get_env(Key) ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 encode_message_test() ->	
-	?assertEqual([{valid, false}, {node, <<"Node">>}, {state, <<"State">>}, {time, <<"Time">>}],decode_message(<<"SEARCH:1234567890123456Node:State:Time">>)).
+	?assertEqual([{valid, false}, {node, <<"Node">>}, {state, <<"State">>}, {time, <<"Time">>}, {uptime, <<"Uptime">>}],decode_message(<<"SEARCH:1234567890123456Node:State:Time:Uptime">>)).
 
 decode_cookie_test() ->
 	crypto:start(),

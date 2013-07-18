@@ -30,7 +30,7 @@
 %% External exports
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([start_link/2, start/1]).
+-export([start_link/3, start/1]).
 
 -export([get_status/1, sys_info/1, etop/1, memory/1, set_alive/1, pid_info/2]).
 -export([get_applications/1, get_app_info/2]). 
@@ -69,7 +69,7 @@ get_status(Node) when is_atom(Node)->
 %% --------------------------------------------------------------------
 %% record definitions
 %% --------------------------------------------------------------------
--record(state, {status = ?UNKNOWN, node, time, ip, reason=[]}).
+-record(state, {status = ?UNKNOWN, node, time, ip, reason=[], uptime}).
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -77,11 +77,11 @@ get_status(Node) when is_atom(Node)->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(Node, Ip) ->
-    gen_server:start_link({local, Node}, ?MODULE, [Node, Ip], []).
+start_link(Node, Ip, Uptime) ->
+    gen_server:start_link({local, Node}, ?MODULE, [Node, Ip, Uptime], []).
 	
-start([Node, Ip]) ->
-	start_link(Node, Ip).	
+start([Node, Ip, Uptime]) ->
+	start_link(Node, Ip, Uptime).	
 %% --------------------------------------------------------------------
 %% Function: init/1
 %% Description: Initiates the server
@@ -90,10 +90,10 @@ start([Node, Ip]) ->
 %%          ignore               |
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
-init([Node, Ip]) ->
+init([Node, Ip, Uptime]) ->
 	net_kernel:monitor_nodes(true, [nodedown_reason]),		
 	start_timer(Node),
-    {ok, #state{node = erlang:atom_to_binary(Node, utf8), ip = Ip, time = get_timestamp()}}.
+    {ok, #state{node = erlang:atom_to_binary(Node, utf8), ip = Ip, time = get_timestamp(), uptime=Uptime}}.
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
 %% Description: Handling call messages
@@ -104,8 +104,9 @@ init([Node, Ip]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason} = State) -> 	
-    {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, {reason, Reason}]}, State};
+handle_call(get_state, From, #state{status = Status, ip = Ip, time = Time, node = Node, reason = Reason, uptime = Uptime} = State) -> 
+    {reply, {Node, [{ip, ip_device:ip_as_string(Ip)}, {state, Status}, {time, date:timestamp_to_date(Time)}, 
+    {reason, Reason}]}, State};
 
 handle_call({app_info, Node, App}, From, State) ->
 	Reply = get_app_info1(Node, App),
@@ -147,7 +148,7 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info({update, Node}, #state{status=Old_s}=State) ->
-	%%lager:debug("update node : ~p from state : ~p ", [Node, Old_s]),
+	lager:debug("update node : ~p from state : ~p ", [Node, Old_s]),
 	New_s = ping_node(Node),
 	start_timer(Node),
 	case New_s =:= Old_s of 
@@ -157,13 +158,13 @@ handle_info({update, Node}, #state{status=Old_s}=State) ->
 	
 handle_info({nodeup, Node, InfoList}, #state{node = Node1} = State) ->
 	lager:debug("nodeup : ~p ~p", [Node, InfoList]),
-	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
+	case erlang:atom_to_binary(Node, utf8) =:= Node1 of
 		true -> {noreply, State#state{status=?ALIVE, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
 handle_info({nodedown, Node, InfoList}, #state{node = Node1} = State) ->
 	lager:debug("nodedown : ~p, ~p", [Node, InfoList]),
-	case erlang:atom_to_binary(Node, latin1) =:= Node1 of
+	case erlang:atom_to_binary(Node, utf8) =:= Node1 of
 		true -> {noreply, State#state{status=?DEAD, reason=InfoList, time=get_timestamp()}};
 		false -> {noreply, State}
 	end;
