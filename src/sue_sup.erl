@@ -1,3 +1,12 @@
+%% Copyright (c) 2013 Ulf Angermann
+%% See MIT-LICENSE for licensing information.
+
+%%% -------------------------------------------------------------------
+%%% Author  : Ulf Angermann uaforum1@googlemail.com
+%%% Description :
+%%%
+%%% Created : 
+
 -module(sue_sup).
 
 -behaviour(supervisor).

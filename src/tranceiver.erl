@@ -1,23 +1,12 @@
-%% Copyright 2010 Ulf Angermann
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%% 
-%%     http://www.apache.org/licenses/LICENSE-2.0
-%% 
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
+%% Copyright (c) 2013 Ulf Angermann
+%% See MIT-LICENSE for licensing information.
 
 %%% -------------------------------------------------------------------
 %%% Author  : Ulf Angermann uaforum1@googlemail.com
 %%% Description :
 %%%
 %%% Created : 
-%%% -------------------------------------------------------------------
+
 -module(tranceiver).
 
 -behaviour(gen_server).
@@ -110,7 +99,7 @@ handle_info(timeout, State) ->
 	
 handle_info(send_alive, State=#state{sender = Socket}) ->
 	{ok, {Address, Port}} = inet:sockname(Socket),
-	lager:debug("IP : ~p  Port : ~p", [Address, Port]),
+	%%lager:debug("IP : ~p  Port : ~p", [Address, Port]),
 	ok = gen_udp:send(Socket, get_env(multi_ip),  get_env(multi_port), get_search()),
 	start_timer(),		
 	{noreply, State};
@@ -141,7 +130,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
-%% <<"SEARCH:COOKIENODE:STATE:TIME">>
+%% <<"SEARCH:COOKIENODE:STATE:TIME":UPTIME>>
 decode_message(<<_Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->	
 	Is_valid_cookie = decode_cookie(Cookie, get_local_cookie()),
 	[Node, R1] = binary:split(Rest,<<":">>),
@@ -150,11 +139,11 @@ decode_message(<<_Action:7/binary, Cookie:16/binary, Rest/binary>> = Message) ->
 	[{valid, Is_valid_cookie},{node, Node}, {state, State}, {time, Time}, {uptime, Uptime}].
 	
 decode_message(false, _Node, _State, _Time, Ip) ->	
-	error_logger:info_msg("Cookie which was received is not a requested one~n"),
+	lager:debug("Cookie which was received is not a requested one"),
 	ok.
 	
 save_node([{valid, true}, {node, Node}, {state, State}, {time, _Time},{uptime, Uptime}, {ip, Ip}]) ->
-	lager:debug("save : ~p in state : ~p", [Node, State, Uptime]),
+	lager:debug("save : ~p in state : ~p with uptime ~p", [Node, State, Uptime]),
 	case node_sup:is_child(Node) of
 		false -> node_sup:start_child([Node, Ip, Uptime]);
 		true -> node:set_alive(Node)
