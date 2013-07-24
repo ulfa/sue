@@ -6,7 +6,7 @@ Also, you have interfaces to etop, sys_info and the memory usage the application
 After installing this application on a node, it broadcast a alive message and if there are other nodes, they will 
 notice the new node. You can ask the application for other nodes and you get the following information:
 
-``èrlang
+```erlang
 {<<"leni@raspberrypi">>,                %% name of the node
   [{ip,"192.168.178.45"},               %% ip adress of the node
    {state,<<"Alive">>},                 %% current state Alive or Dead
