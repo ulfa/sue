@@ -1,7 +1,7 @@
 # Overview
 
-I am working with a lot of nodes on different machines. So i created this application to monitor these nodes and 
-to get specific infos, see feature list 
+An application for connection nodes together and to get informations like the name, ip, state and so.
+Also, you have interfaces to etop, sys_info and the memory usage the applications in a node.
 
 After installing this application on a node, it broadcast a alive message and if there are other nodes, they will 
 notice the new node. You can ask the application for other nodes and you get the following information:
