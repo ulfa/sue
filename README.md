@@ -49,7 +49,7 @@ On my test servers i use the prod.sh script which doesn't start the tools, only 
 To use this application with your own app it is so simple with erlang and rebar.
 First you create a new dependency in your rebar.config 
 
-``èrlang
+```erlang
 {sue, ".*", {git, "git@github.com:ulfa/sue.git", "HEAD"}},
 ```
 Now you have to choices to start sue. 
