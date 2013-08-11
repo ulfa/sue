@@ -1,8 +1,9 @@
 PROJECT = sue
 DIALYZER = dialyzer
 REBAR = rebar
-REPO = ../../../repository
-REPOSRC = ../repository
+REPO = ../../../../repository
+REPOSRC = ../../repository
+TARGET = ~/projects/erlang
 
 all: app
 
@@ -10,13 +11,13 @@ tar: app
 	cd rel; tar cvf $(REPO)/$(PROJECT).$(VERSION).tar $(PROJECT)
 
 tarall: app 
-	cd ..; tar cvf $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(PROJECT)
+	cd ..; tar cvf $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(PROJECT) --exclude .git/* --exclude log/*
 
 cpall: tarall
-	cd ..;scp $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(USR)@$(HOST):~/projects/erlang
+	cd ..;scp $(REPOSRC)/$(PROJECT).src.$(VERSION).tar $(USR)@$(HOST):$(TARGET)
 
 cp: tar
-	 cd ..;scp $(REPOSRC)/$(PROJECT).$(VERSION).tar $(USR)@$(HOST):~/projects/erlang
+	 cd ..;scp $(REPOSRC)/$(PROJECT).$(VERSION).tar $(USR)@$(HOST):$(TARGET)
 
 release: app
 	@$(REBAR) generate
