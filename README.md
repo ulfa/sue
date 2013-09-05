@@ -1,6 +1,6 @@
 # Overview
 
-An application for connection nodes together and to get informations like the name, ip, state and so.
+An application for connecting nodes together to get informations like the name, ip, state and so.
 Also, you have interfaces to etop, sys_info and the memory usage the applications in a node.
 
 After installing this application on a node, it broadcast a alive message and if there are other nodes, they will 
