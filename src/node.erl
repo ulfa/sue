@@ -180,7 +180,6 @@ code_change(OldVsn, State, Extra) ->
 %%% Internal functions
 %% --------------------------------------------------------------------	
 get_app_info1(Node, App) ->
-	process_info:start(),
 	Processes = process_info:get_processes(App, all, Node),
 	convert_children(Processes).
 
